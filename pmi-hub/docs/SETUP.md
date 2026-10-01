@@ -9,6 +9,8 @@
 | Data | Cloud Firestore | Allt som sparas: projekt, uppgifter, personer, anteckningar, rapporter, historik |
 | Behörighet | `pmi-hub/firestore.rules` | Databasen släpper bara in inloggade konton med DigitalTolk-adress; historiken kan inte ändras eller raderas |
 
+Vill du köra på Replit i stället för GitHub Pages? Följ [REPLIT.md](REPLIT.md); steg 1–3 nedan är desamma.
+
 Ingen data ligger i GitHub-repot. Sidan i sig innehåller bara kod; allt innehåll hämtas från
 databasen efter inloggning.
 

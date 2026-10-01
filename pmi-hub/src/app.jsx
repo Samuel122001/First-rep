@@ -250,7 +250,7 @@ function SetupNeeded() {
   return (
     <Gate>
       <h1>{t('Setup needed')}</h1>
-      <p class="muted">{t('This copy of PMI Hub has no Firebase configuration yet. Fill in pmi-hub/firebase.config.json as described in pmi-hub/docs/SETUP.md and deploy again.')}</p>
+      <p class="muted">{t('This copy of PMI Hub has no Firebase configuration yet. Fill in firebase.config.json as described in docs/SETUP.md and build again.')}</p>
     </Gate>
   );
 }

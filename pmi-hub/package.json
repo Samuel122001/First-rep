@@ -7,13 +7,12 @@
   "scripts": {
     "build": "node build.mjs",
     "build:web": "node build.mjs --web",
-    "dev": "node build.mjs --dev"
-  },
-  "devDependencies": {
-    "esbuild": "0.28.2",
-    "preact": "10.29.8"
+    "dev": "node build.mjs --dev",
+    "start": "node build.mjs --web && node build.mjs --dev && node serve.mjs"
   },
   "dependencies": {
-    "firebase": "12.19.0"
+    "esbuild": "0.28.2",
+    "firebase": "12.19.0",
+    "preact": "10.29.8"
   }
 }

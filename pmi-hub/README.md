@@ -71,9 +71,11 @@ PMI Hub builds for two hosts from the same code:
 | Build | Command | Sign-in | Data |
 |---|---|---|---|
 | GitHub Pages | `npm run build:web` → `site/` | Microsoft 365 (Firebase Authentication, single-tenant Entra app) | Cloud Firestore, protected by `firestore.rules` |
+| Replit (or any Node host) | `npm start` → `serve.mjs`; static deploy of `site/` | Microsoft 365 (as above) | Cloud Firestore (as above) |
 | claude.ai artifact | `npm run build` → `dist/pmi-hub.html` | claude.ai account | the artifact's shared database |
 
 Setup of the GitHub Pages version, step by step: [docs/SETUP.md](docs/SETUP.md).
+On Replit: [docs/REPLIT.md](docs/REPLIT.md) (`.replit` runs `npm start` and deploys `site/` as a static site).
 The workflow `.github/workflows/pmi-hub-pages.yml` builds and deploys on every push to
 `main`; the Firebase settings come from the repository variable `PMI_FIREBASE_CONFIG`
 (or `firebase.config.json`).
@@ -97,6 +99,7 @@ then `node build.mjs --web --emulator` and serve `site/`.
 npm install
 npm run build   # dist/pmi-hub.html – the page published as the artifact
 npm run dev     # also dist/dev.html – runs locally on an in-memory database
+npm start       # builds both and serves them: / (web version) and /demo (dev.html)
 ```
 
 `dist/dev.html` uses `dev/mock-claude.js`, a local stand-in for the claude.ai

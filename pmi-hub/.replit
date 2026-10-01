@@ -1,0 +1,18 @@
+# Replit: the Run button builds PMI Hub and serves it (serve.mjs).
+#   /      the real app (Microsoft 365 sign-in, data in Firebase)
+#   /demo  try-out copy without sign-in; data stays in your own browser
+# Deploy: choose "Static". It builds site/ and publishes only that folder.
+modules = ["nodejs-20"]
+run = "npm install && npm start"
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "static"
+build = ["sh", "-c", "npm install && npm run build:web"]
+publicDir = "site"
