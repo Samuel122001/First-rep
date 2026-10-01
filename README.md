@@ -4,7 +4,11 @@ Ett enkelt webbläsarspel som liknar Flappy Bird, skrivet i vanlig HTML och Java
 
 ## Spela
 
-Öppna `index.html` i en webbläsare. Du kan också starta en lokal server:
+Dubbelklicka på `index.html` så öppnas spelet i din webbläsare. Hela spelet ligger i den filen, så den fungerar även om du flyttar eller kopierar den ensam.
+
+Om du har laddat ner projektet som ZIP: packa upp ZIP-filen först (högerklicka → *Extrahera alla* på Windows) och öppna sedan `index.html` i den uppackade mappen.
+
+Du kan också starta en lokal server:
 
 ```bash
 python3 -m http.server 8000
@@ -20,12 +24,11 @@ och gå sedan till <http://localhost:8000>.
 
 ## Filer
 
-- `index.html` – sidan som visar spelet
-- `game.js` – spellogik, fysik, kollisioner och ritning
+- `index.html` – hela spelet: sidan, spellogik, fysik, kollisioner och ritning
 
 ## Justera svårighetsgraden
 
-Överst i `game.js` finns konstanter du kan ändra, till exempel:
+Överst i spelkoden i `index.html` finns konstanter du kan ändra, till exempel:
 
 - `GRAVITATION` – hur snabbt fågeln faller
 - `HOPP_KRAFT` – hur högt fågeln hoppar
