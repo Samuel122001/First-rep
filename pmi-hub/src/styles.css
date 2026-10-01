@@ -399,6 +399,17 @@ textarea::placeholder {
   min-width: 0;
   height: 100%;
 }
+.demo-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px 32px;
+  background: var(--mark-soft);
+  color: var(--mark-ink);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+}
 .sidebar {
   background: var(--side);
   color: var(--side-ink);

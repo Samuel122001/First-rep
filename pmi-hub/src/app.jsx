@@ -39,7 +39,10 @@ export function App() {
         <SyncState compact />
       </div>
       {R.navOpen && <div class="scrim" onClick={() => go({ navOpen: false })} />}
-      <main class="main">{content}</main>
+      <main class="main">
+        {DEMO && <div class="demo-bar">{t('Try-out copy: changes are saved only in this browser and are not shared with anyone.')}</div>}
+        {content}
+      </main>
       {R.taskId && <TaskDrawer taskId={R.taskId} />}
       {R.wizard && <NewProjectWizard onClose={() => go({ wizard: false })} />}
       {R.identity && <IdentityModal />}
@@ -141,6 +144,9 @@ function Sidebar() {
   );
 }
 
+// The local try-out copy (dist/dev.html, /demo on Replit) keeps data in the browser only.
+const DEMO = typeof window !== 'undefined' && !!window.__PMI_DEMO__;
+
 function SyncState({ compact }) {
   let cls = 'ok';
   let label = t('All changes saved');
@@ -153,6 +159,8 @@ function SyncState({ compact }) {
   } else if (S.canWrite === false) {
     cls = 'ro';
     label = t('View only');
+  } else if (DEMO) {
+    label = t('Saved in this browser only');
   } else if (!S.lastSavedAt) {
     label = t('Live, synced for everyone');
   }

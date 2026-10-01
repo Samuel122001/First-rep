@@ -2,6 +2,7 @@
 // run and tested outside claude.ai. Data lives in memory, seeded from
 // window.__SEED__, and is kept in localStorage between reloads.
 (function () {
+  window.__PMI_DEMO__ = true;
   var KEY = 'pmihub-mock-db';
   var store;
   try {
