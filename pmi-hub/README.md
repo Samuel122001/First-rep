@@ -59,7 +59,7 @@ history/{entityId} version history of one task / workstream / project / person
 ```
 
 Every write goes through `src/store.js`, which records the changed fields as
-`{field: [before, after]}` in `history/{entityId}.events`. Events are stored in a
+`{field: {from, to}}` in `history/{entityId}.events`. Events are stored in a
 map keyed by a unique id, and the database merges nested objects on update, so
 two people editing the same task at the same time never overwrite each other's
 history entries. Deleting a task only moves it to the trash.
