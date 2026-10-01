@@ -1,0 +1,15 @@
+{
+  "name": "pmi-hub",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PMI Hub – system för att koordinera post merger integration (PMI) efter förvärv.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --dev"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "preact": "10.29.8"
+  }
+}
