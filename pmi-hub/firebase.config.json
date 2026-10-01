@@ -1,0 +1,10 @@
+{
+  "firebase": {
+    "apiKey": "REPLACE_ME",
+    "authDomain": "REPLACE_ME.firebaseapp.com",
+    "projectId": "REPLACE_ME",
+    "appId": "REPLACE_ME"
+  },
+  "microsoftTenantId": "REPLACE_WITH_DIRECTORY_TENANT_ID",
+  "allowedEmailDomains": ["digitaltolk.com"]
+}

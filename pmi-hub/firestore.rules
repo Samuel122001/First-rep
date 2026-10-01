@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// PMI Hub – who may read and change what.
+// Only people signed in with Microsoft 365 using an allowed company email get
+// in. Keep the domain list in step with "allowedEmailDomains" in
+// firebase.config.json.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isMember() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'microsoft.com'
+        && request.auth.token.email is string
+        && request.auth.token.email.lower().matches('.*@(digitaltolk[.]com)$');
+    }
+
+    // Each person's display name, used to show who made a change.
+    match /users/{uid} {
+      allow read: if isMember();
+      allow write: if isMember() && request.auth.uid == uid;
+    }
+
+    // Names of claude.ai users from an imported backup.
+    match /meta/{docId} {
+      allow read, write: if isMember();
+    }
+
+    // The version history is append-only: entries can be added, never changed
+    // or removed, and history documents cannot be deleted.
+    match /history/{entityId} {
+      allow read, create: if isMember();
+      allow update: if isMember()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['events'])
+        && request.resource.data.events.diff(resource.data.events).changedKeys().size() == 0
+        && request.resource.data.events.diff(resource.data.events).removedKeys().size() == 0;
+      allow delete: if false;
+    }
+
+    // Plan versions may be deleted from the app; everything else is only ever
+    // marked as deleted (trash) so it can be restored.
+    match /baselines/{id} {
+      allow read, create, update, delete: if isMember();
+    }
+
+    match /{coll}/{id} {
+      allow read, create, update: if isMember()
+        && coll in ['people', 'projects', 'workstreams', 'tasks', 'notes', 'reports'];
+      allow delete: if false;
+    }
+  }
+}

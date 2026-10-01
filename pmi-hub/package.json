@@ -1,0 +1,18 @@
+{
+  "name": "pmi-hub",
+  "private": true,
+  "version": "1.0.0",
+  "description": "DigitalTolk Group's PMI Hub: coordination of post-merger integration work.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:web": "node build.mjs --web",
+    "dev": "node build.mjs --dev",
+    "start": "node build.mjs --web && node build.mjs --dev && node serve.mjs"
+  },
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "firebase": "12.19.0",
+    "preact": "10.29.8"
+  }
+}
