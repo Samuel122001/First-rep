@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { t, plural, fmtDate, ago, fmtDateTime } from '../i18n.js';
-import { S, IDX, actorName, revertChange, canEdit, toast, findEntity } from '../store.js';
+import { S, IDX, actorName, revertChange, canEdit, toast, findEntity, changePair } from '../store.js';
 import { Icon, statusLabel, priorityLabel, ragLabel, typeLabel } from './ui.jsx';
 
 const FIELD = () => ({
@@ -148,7 +148,7 @@ function LongValue({ text, kind }) {
 export function EventItem({ ev, showEntity, onOpen }) {
   const actor = ev.a === 'import' ? null : ev.u ? actorName(ev.u) : t('Unknown user');
   const ctx = { type: ev.type, projectId: ev.type === 'project' ? ev.entityId : ev.projectId };
-  const changes = ev.c ? Object.entries(ev.c).filter(([f]) => !HIDDEN.has(f)) : [];
+  const changes = ev.c ? Object.entries(ev.c).filter(([f]) => !HIDDEN.has(f)).map(([f, v]) => [f, changePair(v)]) : [];
   const ent = findEntity(ev.type, ev.entityId);
   const editable = canEdit() && ent && !((ev.type === 'task' || ev.type === 'note') && ent.deleted);
   const label = ev.l || (ent ? ent.title || ent.name : '');

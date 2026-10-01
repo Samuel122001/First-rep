@@ -45,9 +45,16 @@ export function Portfolio() {
           title={t('No PMI projects yet')}
           action={
             canEdit() && (
-              <button class="btn primary" onClick={() => go({ wizard: true })}>
-                <Icon name="plus" /> {t('Start the first PMI project')}
-              </button>
+              <div class="row wrap">
+                <button class="btn primary" onClick={() => go({ wizard: true })}>
+                  <Icon name="plus" /> {t('Start the first PMI project')}
+                </button>
+                {S.backend === 'firebase' && (
+                  <button class="btn" onClick={() => go({ backup: true })}>
+                    <Icon name="upload" /> {t('Import a backup from the claude.ai version')}
+                  </button>
+                )}
+              </div>
             )
           }
         >

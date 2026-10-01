@@ -82,27 +82,26 @@ export const activePeople = () => S.people.filter((p) => p.active !== false).sor
 export const myPerson = () => (S.me.id ? IDX.personByUser.get(S.me.id) || null : null);
 
 // ---------- start-up ----------
-export async function init() {
-  const claude = window.claude;
-  if (!claude || typeof claude.use !== 'function') {
+// backend = { kind, db, user, downloads, sample, auth } from src/backend/*.
+let backend = null;
+export const getBackend = () => backend;
+
+export async function init(b) {
+  backend = b;
+  if (!b) {
     S.status = 'nodb';
     emit();
     return;
   }
-  const [dbNs, userNs, dl, sampleFn] = await Promise.all([
-    claude.use('db').catch(() => null),
-    claude.use('user').catch(() => null),
-    claude.use('downloads').catch(() => null),
-    claude.use('sample').catch(() => null),
-  ]);
-  db = dbNs;
-  userApi = userNs;
-  S.downloads = dl;
-  S.sample = sampleFn;
+  db = b.db;
+  userApi = b.user;
+  S.downloads = b.downloads;
+  S.sample = b.sample;
+  S.backend = b.kind;
   if (userApi) {
     try {
       const me = await userApi.me();
-      S.me = { id: me.id, name: me.name, avatarUrl: me.avatarUrl, color: me.color };
+      S.me = { id: me.id, name: me.name, email: me.email || null, avatarUrl: me.avatarUrl, color: me.color };
       const cw = await userApi.can('data.write');
       S.canWrite = cw === false ? false : cw === true ? true : null;
     } catch {
@@ -121,6 +120,30 @@ export async function init() {
   watch('workstreams', (docs) => (S.workstreams = docs));
   watch('tasks', (docs) => (S.tasks = docs));
   emit();
+}
+
+// The first time someone opens the app, link their account to the person in
+// the people list with the same name or email (only when exactly one matches).
+let autoLinkTried = false;
+function autoLink() {
+  if (autoLinkTried || !S.loaded.people || !S.people.length || !S.me.id || S.canWrite === false) return;
+  autoLinkTried = true;
+  if (IDX.personByUser.get(S.me.id)) return;
+  const fold = (x) => String(x || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  // "Anna Svensson", "Svensson, Anna" and anna.svensson@... all count as the same name.
+  const nameKey = (x) => {
+    let n = fold(x);
+    if (n.includes(',')) n = n.split(',').reverse().join(' ');
+    return n.replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  };
+  const email = fold(S.me.email);
+  const keys = new Set([nameKey(S.me.name), nameKey(email.split('@')[0])].filter((k) => k.includes(' ')));
+  const hits = S.people.filter((p) => p.active !== false && p.type === 'employee' && !p.userId && ((email && fold(p.email) === email) || keys.has(nameKey(p.name))));
+  if (hits.length === 1) {
+    linkMe(hits[0])
+      .then(() => toast('ok', t('Signed in as {n}.', { n: hits[0].name })))
+      .catch(() => {});
+  }
 }
 
 // Overdue, "due soon", the D+ counter and the timeline's today line are all
@@ -151,9 +174,13 @@ function watch(coll, assign) {
         assign(docsOf(snap));
         S.loaded[coll] = true;
         emit();
+        if (coll === 'people') queueMicrotask(autoLink);
       },
       (e) => {
-        if (e && e.code === 'unavailable') setTimeout(start, 2000 + Math.random() * 2000);
+        if (e && e.code === 'permission_denied') {
+          S.status = 'denied';
+          emit();
+        } else if (e && e.code === 'unavailable') setTimeout(start, 2000 + Math.random() * 2000);
         else if (e && e.code !== 'revoked') toast('error', describeError(e));
       },
     );
@@ -293,6 +320,10 @@ async function retryOnce(fn) {
 }
 
 function handleWriteError(e) {
+  if (e && e.code === 'permission_denied') {
+    toast('error', t('Your account is not allowed to change this data.'));
+    return;
+  }
   if (e && e.code === 'invalid_argument' && S.canWrite !== true) {
     S.canWrite = false;
     toast('error', t('You have view-only access. Ask the owner for edit access to make changes.'));
@@ -361,8 +392,10 @@ async function createEntity(type, id, data) {
 
 async function updateEntity(type, ent, patch, opts = {}) {
   const changes = {};
+  // Stored as {from, to}: Firestore cannot hold an array inside an array
+  // (older entries on claude.ai use [from, to]; both are read).
   for (const k of Object.keys(patch)) {
-    if (!equal(ent[k], patch[k])) changes[k] = [ent[k] ?? null, patch[k] ?? null];
+    if (!equal(ent[k], patch[k])) changes[k] = { from: ent[k] ?? null, to: patch[k] ?? null };
   }
   if (!Object.keys(changes).length) return false;
   const body = clean({ ...patch, ...(opts.extra || {}), updatedAt: nowISO(), updatedBy: S.me.id || null });
@@ -413,8 +446,10 @@ export function addComment(type, ent, text) {
 }
 
 // Puts a field back to its value before a given change (logged as a new change).
+export const changePair = (v) => (Array.isArray(v) ? v : [v && v.from, v && v.to]);
+
 export function revertChange(ev, field) {
-  const [from] = ev.c[field];
+  const [from] = changePair(ev.c[field]);
   const type = ev.type;
   const ent = findEntity(type, ev.entityId);
   if (!ent) return Promise.resolve(false);

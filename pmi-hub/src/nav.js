@@ -13,6 +13,7 @@ export const R = {
   taskId: null,
   wizard: false,
   identity: false, // "Who are you?" dialog
+  backup: false, // backup and import dialog
   navOpen: false,
   ...(saved && typeof saved === 'object' ? { view: saved.view, projectId: saved.projectId, tab: saved.tab || 'overview' } : {}),
 };
@@ -47,7 +48,7 @@ try {
 }
 
 function apply(next) {
-  Object.assign(R, next, { navOpen: false, identity: false });
+  Object.assign(R, next, { navOpen: false, identity: false, backup: false });
   lsSet('route', { view: R.view, projectId: R.projectId, tab: R.tab });
   emit();
 }

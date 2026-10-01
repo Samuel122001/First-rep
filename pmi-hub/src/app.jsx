@@ -6,6 +6,8 @@ import { Icon, Avatar, ConfirmHost, Toasts } from './components/ui.jsx';
 import { TaskDrawer } from './components/drawer.jsx';
 import { NewProjectWizard } from './components/wizard.jsx';
 import { IdentityModal } from './components/identity.jsx';
+import { BackupModal } from './components/backup.jsx';
+import { useState } from 'preact/hooks';
 import { Portfolio } from './views/portfolio.jsx';
 import { MyTasks } from './views/mytasks.jsx';
 import { People } from './views/people.jsx';
@@ -14,6 +16,10 @@ import { Project } from './views/project.jsx';
 export function App() {
   useStore();
   if (S.status === 'nodb') return <NoDb />;
+  if (S.status === 'setup') return <SetupNeeded />;
+  if (S.status === 'checking') return <Gate busy />;
+  if (S.status === 'signin') return <SignIn />;
+  if (S.status === 'denied') return <Denied />;
   let content;
   if (S.status === 'connecting') content = <Loading />;
   else if (R.view === 'project' && R.projectId) content = <Project id={R.projectId} />;
@@ -37,6 +43,7 @@ export function App() {
       {R.taskId && <TaskDrawer taskId={R.taskId} />}
       {R.wizard && <NewProjectWizard onClose={() => go({ wizard: false })} />}
       {R.identity && <IdentityModal />}
+      {R.backup && <BackupModal />}
       <ConfirmHost />
       <Toasts />
     </div>
@@ -110,6 +117,16 @@ function Sidebar() {
       </div>
       <div class="sb-foot">
         <SyncState />
+        <div class="sb-links">
+          <button class="sb-link" onClick={() => go({ backup: true })}>
+            <Icon name="archive" size={14} /> {t('Backup')}
+          </button>
+          {S.authApi && (
+            <button class="sb-link" onClick={() => S.authApi.signOut()}>
+              {t('Sign out')}
+            </button>
+          )}
+        </div>
         {S.me.id && (
           <button class="sb-me" onClick={() => go({ identity: true })} title={t('Change who you are')}>
             {S.me.avatarUrl ? <img src={S.me.avatarUrl} alt="" width="26" height="26" /> : <Avatar person={me} size={26} />}
@@ -157,6 +174,84 @@ function Loading() {
         <div class="skel" />
       </div>
     </div>
+  );
+}
+
+// ---------- sign-in (GitHub Pages version with Microsoft 365) ----------
+function Gate({ busy, children }) {
+  return (
+    <div class="gate">
+      <div class="gate-card">
+        <Brand />
+        <p class="gate-app">
+          <b>PMI Hub</b> · {t('Post-merger integration')}
+        </p>
+        {busy ? <p class="muted">{t('Checking your sign-in…')}</p> : children}
+      </div>
+    </div>
+  );
+}
+
+const AUTH_ERRORS = {
+  'auth/popup-closed-by-user': 'The sign-in window was closed before you finished. Try again.',
+  'auth/cancelled-popup-request': 'The sign-in window was closed before you finished. Try again.',
+  'auth/unauthorized-domain': 'This web address is not yet allowed to sign in. Add it under Authorized domains in Firebase Authentication.',
+  'auth/operation-not-allowed': 'Microsoft sign-in is not switched on in Firebase Authentication yet.',
+  'auth/invalid-credential': 'Microsoft did not accept the sign-in. Make sure you use your DigitalTolk account.',
+  'auth/network-request-failed': 'Could not reach the sign-in service. Check your connection and try again.',
+  'auth/account-exists-with-different-credential': 'This email is already registered with another sign-in method.',
+};
+
+function SignIn() {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(S.authError ? AUTH_ERRORS[S.authError] || S.authError : '');
+  const start = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      await S.authApi.signIn();
+    } catch (e) {
+      setErr(t(AUTH_ERRORS[e && e.code] || 'Sign-in failed: {m}', { m: (e && (e.code || e.message)) || '' }));
+      setBusy(false);
+    }
+  };
+  return (
+    <Gate>
+      <h1>{t('Sign in')}</h1>
+      <p class="muted">{t('Use your DigitalTolk Microsoft 365 account. Everything you change is saved for the whole team.')}</p>
+      <button class="btn ms-btn" onClick={start} disabled={busy}>
+        <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
+          <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+          <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+          <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+          <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+        </svg>
+        {busy ? t('Signing in…') : t('Sign in with Microsoft')}
+      </button>
+      {err && <p class="warn-line bad">{err}</p>}
+    </Gate>
+  );
+}
+
+function Denied() {
+  const u = S.authApi && S.authApi.current();
+  return (
+    <Gate>
+      <h1>{t('No access')}</h1>
+      <p class="muted">{t('{e} does not have access to PMI Hub. Sign in with your DigitalTolk account, or ask the PMI coordinator for access.', { e: (u && u.email) || t('This account') })}</p>
+      <button class="btn" onClick={() => S.authApi.signOut()}>
+        {t('Sign out and try another account')}
+      </button>
+    </Gate>
+  );
+}
+
+function SetupNeeded() {
+  return (
+    <Gate>
+      <h1>{t('Setup needed')}</h1>
+      <p class="muted">{t('This copy of PMI Hub has no Firebase configuration yet. Fill in pmi-hub/firebase.config.json as described in pmi-hub/docs/SETUP.md and deploy again.')}</p>
+    </Gate>
   );
 }
 

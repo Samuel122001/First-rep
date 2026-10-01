@@ -3,3 +3,4 @@ dist/dev.html
 site/
 seed/*
 !seed/README.md
+*-debug.log

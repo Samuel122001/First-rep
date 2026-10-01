@@ -66,14 +66,30 @@ history entries. Deleting a task only moves it to the trash.
 
 ## Hosting
 
-The published page runs on claude.ai and stores its data in the artifact's
-shared database (`window.claude.use('db')`). A copy on another host, such as
-GitHub Pages, has no database and shows a notice instead. To host it
-elsewhere, `src/store.js` needs a backend with the same document model;
-Firebase Firestore (with sign-in restricted to the company's accounts) maps
-almost one to one, because the artifact database's API is modelled on it.
-File downloads (`src/files.js`) already fall back to normal browser downloads
-outside claude.ai, and *Write with Claude* is simply hidden there.
+PMI Hub builds for two hosts from the same code:
+
+| Build | Command | Sign-in | Data |
+|---|---|---|---|
+| GitHub Pages | `npm run build:web` → `site/` | Microsoft 365 (Firebase Authentication, single-tenant Entra app) | Cloud Firestore, protected by `firestore.rules` |
+| claude.ai artifact | `npm run build` → `dist/pmi-hub.html` | claude.ai account | the artifact's shared database |
+
+Setup of the GitHub Pages version, step by step: [docs/SETUP.md](docs/SETUP.md).
+The workflow `.github/workflows/pmi-hub-pages.yml` builds and deploys on every push to
+`main`; the Firebase settings come from the repository variable `PMI_FIREBASE_CONFIG`
+(or `firebase.config.json`).
+
+`src/backend/firebase.js` gives Firestore the same small API as the artifact
+database, so the rest of the app does not know which host it runs on. Data
+moves between the two with *Backup → Download backup / Import* (`src/backup.js`).
+
+Database rules (`firestore.rules`):
+- only accounts signed in with Microsoft and an allowed company email domain;
+- the version history is append-only (entries cannot be changed or removed);
+- tasks, notes and other records cannot be deleted, only moved to the trash.
+
+Run the rules and the whole web version locally against the Firebase
+emulators: `firebase emulators:start --project demo-pmi --only auth,firestore`,
+then `node build.mjs --web --emulator` and serve `site/`.
 
 ## Development
 
@@ -97,6 +113,9 @@ src/views/          portfolio, project (overview), timeline, tasks + board,
                     status report, history, settings, people, my tasks
 src/components/     task panel, new project wizard, filters, history items, UI kit
 src/export.js       Excel export
+src/backup.js       full backup download and import
+src/backend/        claude.ai and Firebase backends (same API for the store)
+src/main.jsx        entry for claude.ai; src/main-web.jsx entry for GitHub Pages
 src/styles.css      design tokens (light and dark) and all styles
 ```
 

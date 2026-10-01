@@ -2,14 +2,18 @@
   "name": "pmi-hub",
   "private": true,
   "version": "1.0.0",
-  "description": "PMI Hub – system för att koordinera post merger integration (PMI) efter förvärv.",
+  "description": "DigitalTolk Group's PMI Hub: coordination of post-merger integration work.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
+    "build:web": "node build.mjs --web",
     "dev": "node build.mjs --dev"
   },
   "devDependencies": {
     "esbuild": "0.28.2",
     "preact": "10.29.8"
+  },
+  "dependencies": {
+    "firebase": "12.19.0"
   }
 }

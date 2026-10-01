@@ -2,7 +2,7 @@
 // sheet), a workstream summary and the change log.
 import { t } from './i18n.js';
 import { todayISO, networkDays, stats, computeRag, byOrder, cmpDate } from './util.js';
-import { S, IDX, projectTasks, projectWorkstreams, flattenHistory, actorName, toast } from './store.js';
+import { S, IDX, projectTasks, projectWorkstreams, flattenHistory, actorName, toast, changePair } from './store.js';
 import { statusLabel, priorityLabel, ragLabel } from './components/ui.jsx';
 import { saveFile, loadScript } from './files.js';
 import { fieldLabel, formatValue } from './components/events.jsx';
@@ -74,7 +74,10 @@ export async function exportExcel(p) {
     const who = ev.a === 'import' ? 'Import' : ev.u ? actorName(ev.u) : '';
     const ctx = { type: ev.type, projectId: p.id };
     if (ev.c) {
-      for (const [f, [from, to]] of Object.entries(ev.c)) log.push([new Date(ev.t), who, ev.l || '', ev.a, fieldLabel(f), formatValue(f, from, ctx), formatValue(f, to, ctx), '']);
+      for (const [f, v] of Object.entries(ev.c)) {
+        const [from, to] = changePair(v);
+        log.push([new Date(ev.t), who, ev.l || '', ev.a, fieldLabel(f), formatValue(f, from, ctx), formatValue(f, to, ctx), '']);
+      }
     } else {
       log.push([new Date(ev.t), who, ev.l || '', ev.a, '', '', '', ev.x || '']);
     }
