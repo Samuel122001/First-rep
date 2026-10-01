@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Growth Plan SE Tenders</title>
+<meta name="description" content="Interaktiv dashboard: ackumulerat ACV per avtalsutgång, byggd från Growth_plan_SE_tenders.xlsx">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: the Excel sheet re-set as a page — filter band, key-figure strip, quarter table beside the combo chart, full-width procurement list */
+:root {
+  --bg: #f2f5f7;
+  --surface: #ffffff;
+  --ink: #13222c;
+  --ink-2: #44596a;
+  --muted: #6b7e8c;
+  --rule: #dce3e9;
+  --rule-strong: #c4d0d9;
+  --band: #156082;          /* Excel header fill */
+  --band-ink: #ffffff;
+  --accent: #156082;
+  --input: #fff2cc;         /* Excel input-cell yellow */
+  --input-rule: #e6d49c;
+  --input-ink: #1b3fc0;     /* blue = input value */
+  --s-bar: #64b5e4;         /* ACV per quarter */
+  --s-line: #006192;        /* cumulative ACV */
+  --hover: #edf3f7;
+  --sel: #dcebf5;
+  --p-sen-bg: #e06666; --p-sen-ink: #ffffff;
+  --p-hog-bg: #ffc7ce; --p-hog-ink: #9c0006;
+  --p-med-bg: #ffeb9c; --p-med-ink: #6f4600;
+  --p-lag-bg: #c6e0b4; --p-lag-ink: #2f4d1c;
+  --shadow: 0 1px 2px rgba(19, 34, 44, .06), 0 4px 16px rgba(19, 34, 44, .05);
+
+  --f-display: "IBM Plex Sans Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-md: 0.875rem; --t-lg: 1rem; --t-xl: 1.25rem; --t-2xl: 1.75rem; --t-hero: 2.75rem;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1216; --surface: #13181c; --ink: #e3ebf0; --ink-2: #a6b5c0; --muted: #7f909c;
+    --rule: #242e36; --rule-strong: #34424c; --band: #17475f; --band-ink: #e8f3fa; --accent: #6db8e4;
+    --input: #2b2715; --input-rule: #4b4224; --input-ink: #a9bfff;
+    --s-bar: #196696; --s-line: #409ed1; --hover: #1a2329; --sel: #173041;
+    --p-sen-bg: #8f2f2f; --p-sen-ink: #ffffff;
+    --p-hog-bg: #4a1d25; --p-hog-ink: #ffb4be;
+    --p-med-bg: #433818; --p-med-ink: #ffdf8a;
+    --p-lag-bg: #233a1d; --p-lag-ink: #c0e3a6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1216; --surface: #13181c; --ink: #e3ebf0; --ink-2: #a6b5c0; --muted: #7f909c;
+  --rule: #242e36; --rule-strong: #34424c; --band: #17475f; --band-ink: #e8f3fa; --accent: #6db8e4;
+  --input: #2b2715; --input-rule: #4b4224; --input-ink: #a9bfff;
+  --s-bar: #196696; --s-line: #409ed1; --hover: #1a2329; --sel: #173041;
+  --p-sen-bg: #8f2f2f; --p-sen-ink: #ffffff;
+  --p-hog-bg: #4a1d25; --p-hog-ink: #ffb4be;
+  --p-med-bg: #433818; --p-med-ink: #ffdf8a;
+  --p-lag-bg: #233a1d; --p-lag-ink: #c0e3a6;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-md);
+  line-height: 1.45;
+  padding-inline: 16px;
+  padding-block: 24px 48px;
+}
+table { font: inherit; border-collapse: collapse; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.page { max-width: 1440px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* Header */
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
+.head h1 {
+  margin: 0; font-family: var(--f-display); font-weight: 600; font-size: var(--t-2xl);
+  line-height: 1.15; color: var(--accent); text-wrap: balance; letter-spacing: -0.005em;
+}
+.head p { margin: 4px 0 0; color: var(--muted); font-size: var(--t-sm); }
+.head .src { font-family: var(--f-mono); font-size: var(--t-xs); color: var(--muted); }
+
+/* Panels with an Excel-style header band */
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
+.band {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: var(--band); color: var(--band-ink); padding: 8px 14px;
+  border-radius: calc(var(--r) - 1px) calc(var(--r) - 1px) 0 0;
+  font-weight: 600; font-size: var(--t-md);
+}
+.band .hint { font-weight: 400; font-size: var(--t-xs); opacity: .85; }
+
+/* Filters */
+.filters { padding: 14px; display: grid; gap: 14px; }
+.frow { display: grid; gap: 12px 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span, .field > label, .lbl {
+  font-size: var(--t-xs); font-weight: 500; color: var(--ink-2); letter-spacing: .02em;
+}
+.cell {
+  width: 100%; min-width: 0; height: 34px; padding: 0 10px;
+  background: var(--input); color: var(--input-ink); border: 1px solid var(--input-rule); border-radius: 4px;
+  font-size: var(--t-md); font-variant-numeric: tabular-nums;
+}
+select.cell {
+  appearance: none; -webkit-appearance: none; padding-right: 28px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+.cell.is-set { font-weight: 600; border-color: var(--input-ink); }
+.daterow { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: end; }
+.daterow .field { width: 170px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chipbtn {
+  height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--rule-strong);
+  background: var(--surface); color: var(--ink-2); cursor: pointer; font-size: var(--t-sm); font-variant-numeric: tabular-nums;
+}
+.chipbtn:hover { background: var(--hover); color: var(--ink); }
+.chipbtn[aria-pressed="true"] { background: var(--band); border-color: var(--band); color: var(--band-ink); font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--input-rule); border-radius: 4px; overflow: hidden; height: 34px; }
+.seg label { display: flex; align-items: center; padding: 0 14px; cursor: pointer; background: var(--input); color: var(--input-ink); font-size: var(--t-md); }
+.seg label + label { border-left: 1px solid var(--input-rule); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input:checked + span { font-weight: 600; }
+.seg label:has(input:checked) { background: var(--band); color: var(--band-ink); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.rs .lbl { font-size: var(--t-sm); color: var(--ink); font-weight: 500; letter-spacing: 0; }
+.rs .note { font-size: var(--t-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rs .spacer { flex: 1 1 auto; }
+.btn {
+  height: 34px; padding: 0 14px; border-radius: 4px; border: 1px solid var(--rule-strong);
+  background: var(--surface); color: var(--ink); cursor: pointer; font-size: var(--t-sm); font-weight: 500;
+}
+.btn:hover { background: var(--hover); }
+.foot-hint { font-size: var(--t-xs); color: var(--muted); margin: 0; }
+
+/* Key figures */
+.kpis { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1fr 1.3fr; }
+.kpi { padding: 14px 16px 16px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.kpi + .kpi { border-left: 1px solid var(--rule); }
+.kpi .k { font-size: var(--t-xs); color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+.kpi .v { font-size: var(--t-2xl); font-weight: 600; line-height: 1.15; }
+.kpi .v.hero { font-size: var(--t-hero); line-height: 1.05; letter-spacing: -0.015em; }
+.kpi .v .u { font-size: .45em; font-weight: 500; color: var(--ink-2); margin-left: .25em; letter-spacing: 0; }
+.kpi .s { font-size: var(--t-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter { height: 6px; border-radius: 3px; background: var(--sel); overflow: hidden; margin-top: 6px; }
+.meter > i { display: block; height: 100%; background: var(--s-line); border-radius: 3px; width: 0; transition: width .3s ease; }
+
+/* Split: quarter table + chart */
+.split { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.scroll { overflow-x: auto; }
+.qt { width: 100%; font-variant-numeric: tabular-nums; font-size: var(--t-sm); }
+.qt th, .qt td { padding: 5px 10px; text-align: right; white-space: nowrap; }
+.qt th:first-child, .qt td:first-child { text-align: left; }
+.qt thead th { background: var(--band); color: var(--band-ink); font-weight: 600; font-size: var(--t-xs); vertical-align: bottom; line-height: 1.25; white-space: normal; }
+.qt tbody tr { border-top: 1px solid var(--rule); cursor: pointer; }
+.qt tbody tr:hover { background: var(--hover); }
+.qt tbody tr.zero td { color: var(--muted); }
+.qt tbody tr.is-sel { background: var(--sel); }
+.qt tbody tr.is-sel td:first-child { box-shadow: inset 3px 0 0 var(--s-line); }
+.qt .qbtn { background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--f-mono); font-size: var(--t-xs); color: inherit; }
+.qt .yr-start td { border-top: 1px solid var(--rule-strong); }
+.qt tfoot td { border-top: 2px solid var(--rule-strong); font-weight: 600; padding-block: 8px; }
+.ctrl { padding: 8px 12px 12px; font-size: var(--t-xs); color: var(--muted); display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.ctrl b { font-weight: 500; color: var(--ink-2); }
+.ctrl b.warn { color: var(--p-hog-ink); }
+
+.chartcard { padding: 14px 14px 10px; display: grid; gap: 8px; }
+.chartcard h2 { margin: 0; font-size: var(--t-lg); font-weight: 600; text-wrap: balance; }
+.chartmeta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--t-xs); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw-bar { width: 10px; height: 10px; border-radius: 2px; background: var(--s-bar); }
+.legend .sw-line { width: 16px; height: 2px; border-radius: 1px; background: var(--s-line); position: relative; }
+.legend .sw-line::after { content: ""; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--s-line); }
+.chartnote { font-size: var(--t-xs); color: var(--muted); }
+.chartwrap { position: relative; width: 100%; height: 480px; }
+.chartwrap svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chartwrap .ax { font-family: var(--f-mono); font-size: 10.5px; fill: var(--muted); }
+.chartwrap .ax.yr { font-family: var(--f-body); font-size: 11.5px; font-weight: 600; fill: var(--ink-2); }
+.chartwrap .endlbl { font-family: var(--f-body); font-size: 12px; font-weight: 600; fill: var(--ink); }
+.chartwrap .empty { font-family: var(--f-body); font-size: 13px; fill: var(--muted); }
+.chartwrap .hit { cursor: pointer; outline: none; }
+.chartwrap .hit:focus-visible { outline: none; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 2; min-width: 190px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .14); padding: 10px 12px; font-size: var(--t-xs);
+  display: grid; gap: 4px; font-variant-numeric: tabular-nums;
+}
+.tip .t { font-family: var(--f-mono); font-weight: 500; color: var(--ink-2); margin-bottom: 2px; }
+.tip .r { display: grid; grid-template-columns: 14px auto 1fr; align-items: center; gap: 8px; }
+.tip .r b { font-size: var(--t-md); font-weight: 600; color: var(--ink); }
+.tip .r em { font-style: normal; color: var(--muted); }
+.tip .key-bar { width: 10px; height: 10px; border-radius: 2px; background: var(--s-bar); }
+.tip .key-line { width: 14px; height: 2px; background: var(--s-line); border-radius: 1px; }
+.tip .key-n { width: 14px; text-align: center; color: var(--muted); }
+.tip .act { color: var(--muted); border-top: 1px solid var(--rule); padding-top: 6px; margin-top: 2px; }
+
+/* Procurement list */
+.listhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.listhead h2 { margin: 0; font-size: var(--t-xl); font-weight: 600; color: var(--accent); text-wrap: balance; font-family: var(--f-display); }
+.drill { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-sm); color: var(--ink-2); }
+.drill button {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
+  background: var(--sel); color: var(--ink); border: 1px solid var(--rule-strong); cursor: pointer; font-size: var(--t-sm); font-weight: 500;
+}
+.drill button:hover { border-color: var(--s-line); }
+.drill button svg { width: 10px; height: 10px; }
+.lt { width: 100%; min-width: 1120px; font-size: var(--t-sm); }
+.lt th, .lt td { padding: 7px 10px; text-align: left; vertical-align: top; }
+.lt thead th { background: var(--band); color: var(--band-ink); font-weight: 600; font-size: var(--t-xs); padding: 0; vertical-align: bottom; }
+.lt thead th button {
+  width: 100%; display: flex; align-items: center; gap: 6px; padding: 9px 10px; background: none; border: 0;
+  color: inherit; font-weight: 600; font-size: var(--t-xs); cursor: pointer; text-align: left; white-space: normal; line-height: 1.25;
+}
+.lt thead th button:hover { background: rgba(255, 255, 255, .1); }
+.lt thead th button .arr { opacity: .45; font-size: 10px; width: 8px; }
+.lt thead th[aria-sort] button .arr { opacity: 1; }
+.lt thead th.num button { justify-content: flex-end; }
+.lt tbody tr { border-top: 1px solid var(--rule); }
+.lt tbody tr:hover td { background: var(--hover); }
+.lt td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lt td.date { font-variant-numeric: tabular-nums; white-space: nowrap; font-family: var(--f-mono); font-size: var(--t-xs); padding-top: 9px; }
+.lt td.org { font-weight: 500; min-width: 190px; }
+.lt td.kund { min-width: 130px; max-width: 170px; }
+.lt td.nw { white-space: nowrap; }
+.lt td.komm { min-width: 260px; max-width: 380px; color: var(--ink-2); }
+.lt td.nil { color: var(--muted); }
+.lt th:first-child, .lt td:first-child { position: sticky; left: 0; z-index: 1; }
+.lt td:first-child { background: var(--surface); box-shadow: 1px 0 0 var(--rule); }
+.lt thead th:first-child { background: var(--band); }
+.lt tfoot td { border-top: 2px solid var(--rule-strong); font-weight: 600; background: var(--surface); }
+.lt .emptyrow td { text-align: center; color: var(--muted); padding: 28px 10px; position: static; }
+.pchip { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: var(--t-xs); font-weight: 600; white-space: nowrap; }
+.p-sen { background: var(--p-sen-bg); color: var(--p-sen-ink); }
+.p-hog { background: var(--p-hog-bg); color: var(--p-hog-ink); }
+.p-med { background: var(--p-med-bg); color: var(--p-med-ink); }
+.p-lag { background: var(--p-lag-bg); color: var(--p-lag-ink); }
+.fas { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.steps { display: inline-flex; gap: 2px; }
+.steps i { width: 4px; height: 10px; border-radius: 1px; background: var(--rule-strong); }
+.steps i.on { background: var(--s-line); }
+
+.updating { opacity: .55; transition: opacity .12s; }
+
+@media (max-width: 1100px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi:nth-child(4) { border-left: 0; }
+  .kpi:nth-child(n+4) { border-top: 1px solid var(--rule); }
+  .kpi.hero-cell { grid-column: span 2; }
+}
+@media (max-width: 980px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .chartwrap { height: 340px; }
+  .split .chartpanel { order: -1; }
+}
+@media (max-width: 640px) {
+  body { padding-block: 16px 32px; }
+  .head h1 { font-size: var(--t-xl); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 12px; }
+  .kpi.hero-cell { grid-column: 1 / -1; }
+  .kpi + .kpi { border-left: 0; }
+  .kpi:nth-child(n+2) { border-top: 1px solid var(--rule); }
+  .kpi:nth-child(odd):not(.hero-cell) { border-left: 1px solid var(--rule); }
+  .kpi .v.hero { font-size: 2.25rem; }
+  .kpi .v { font-size: var(--t-xl); }
+  .daterow .field { width: calc(50% - 7px); }
+  .frow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chartwrap { height: 280px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="head">
+    <div>
+      <h1>Growth plan SE – Ackumulerat ACV per avtalsutgång</h1>
+      <p>Interaktiv version av fliken <i>Growth plan SE - Dashboard</i>. Ändra filtren så räknas nyckeltal, kvartalstabell, diagram och lista om.</p>
+    </div>
+    <div class="src" id="src"></div>
+  </header>
+
+  <section class="panel" aria-labelledby="f-title">
+    <div class="band"><span id="f-title">Filter</span><span class="hint">Gula celler = val. (Alla) = inget filter. Tomt datum = ingen gräns.</span></div>
+    <div class="filters">
+      <div class="daterow">
+        <div class="field"><label for="f-from">Avtalsutgång från</label><input class="cell" type="date" id="f-from"></div>
+        <div class="field"><label for="f-to">Avtalsutgång till</label><input class="cell" type="date" id="f-to"></div>
+        <div class="field" style="width:auto"><span class="lbl" id="presets-lbl">Snabbval</span><div class="presets" id="presets" role="group" aria-labelledby="presets-lbl"></div></div>
+      </div>
+      <div class="frow" id="selects"></div>
+      <div class="rs">
+        <span class="lbl" id="rs-lbl">Inkludera Region Stockholm tolkning (oavsett datum)</span>
+        <div class="seg" role="radiogroup" aria-labelledby="rs-lbl">
+          <label><input type="radio" name="rs" id="rs-ja" value="ja"><span>Ja</span></label>
+          <label><input type="radio" name="rs" id="rs-nej" value="nej"><span>Nej</span></label>
+        </div>
+        <span class="note" id="rs-note"></span>
+        <span class="spacer"></span>
+        <button class="btn" type="button" id="reset">Återställ filter</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="k-title">
+    <div class="band"><span id="k-title">Nyckeltal</span></div>
+    <div class="kpis">
+      <div class="kpi"><span class="k">Antal avtal</span><span class="v" id="k-n">–</span><span class="s" id="k-n-s"></span></div>
+      <div class="kpi hero-cell"><span class="k">Totalt ACV</span><span class="v hero" id="k-acv">–</span><span class="s" id="k-acv-s"></span></div>
+      <div class="kpi"><span class="k">Första avtalsutgång i urvalet</span><span class="v" id="k-first">–</span><span class="s" id="k-first-s"></span></div>
+      <div class="kpi"><span class="k">Sista avtalsutgång i urvalet</span><span class="v" id="k-last">–</span><span class="s" id="k-last-s"></span></div>
+      <div class="kpi"><span class="k">Andel av totalt ACV (alla avtal mellan 2025-2028)</span><span class="v" id="k-share">–</span><div class="meter" aria-hidden="true"><i id="k-meter"></i></div><span class="s" id="k-share-s"></span></div>
+    </div>
+  </section>
+
+  <div class="split">
+    <section class="panel" aria-labelledby="q-title">
+      <div class="band"><span id="q-title">ACV per kvartal</span><span class="hint">Klicka på ett kvartal för att visa det i listan</span></div>
+      <div class="scroll">
+        <table class="qt" id="qt">
+          <thead><tr><th scope="col">Kvartal</th><th scope="col">Antal avtal</th><th scope="col">ACV som löper ut<br>(MSEK)</th><th scope="col">Ackumulerat ACV<br>(MSEK)</th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td>Totalt</td><td id="qt-n"></td><td id="qt-acv"></td><td id="qt-cum"></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="ctrl"><span>Kontroll: ACV i urval utanför tabellens period</span><b id="ctrl">0 kr</b></div>
+    </section>
+
+    <section class="panel chartpanel" aria-labelledby="c-title">
+      <div class="chartcard">
+        <h2 id="c-title">ACV per avtalsutgång (kvartal) och ackumulerat</h2>
+        <div class="chartmeta">
+          <div class="legend"><span><i class="sw-bar"></i>ACV som löper ut per kvartal</span><span><i class="sw-line"></i>Ackumulerat ACV</span></div>
+          <span class="chartnote">MSEK · klicka på en stapel för att filtrera listan</span>
+        </div>
+        <div class="chartwrap" id="chart"><div class="tip" id="tip" hidden></div></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="l-title">
+    <div class="filters" style="padding-bottom:10px">
+      <div class="listhead">
+        <h2 id="l-title">Upphandlingar i urvalet</h2>
+        <div class="drill" id="drill" hidden><span>Visar endast</span><button type="button" id="drill-clear" aria-label="Visa alla kvartal"><span id="drill-lbl"></span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button></div>
+      </div>
+    </div>
+    <div class="scroll">
+      <table class="lt" id="lt">
+        <thead><tr id="lt-head"></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* Source: flik "Gantt - kontaktplan", rad 4–155, kolumn B–M
+     [Organisation, Typ, Län, Grupp, Kundstatus, ACV, Avtalsutgång, Prioritet, Ansvarig, Fas, Kommentar, Deadline] */
+  const RAW = [["UNHCR","Myndighet","Stockholms län",null,"Opportunities - Interpretations",null,null,null,null,"Anbud inlämnat",null,null],["Riksdagsförvaltningen ","Myndighet","Stockholms län",null,"Opportunities - Interpretations",500000,null,null,"Johan","Anbud pågår",null,null],["Halmstads Fastighetsaktiebolag","B2B Public","Hallands län","Upphandlar själva","Opportunities - Translations",175000,"2025-02-14",null,null,"Ej startad",null,null],["Simrishamns kommun","Kommun","Skåne län","Group Y","Non-contracted & Rank 2/below customers",473751.35,"2025-04-11",null,"Johan","Förberedelse / RFI","Efter RFI presentation - kontakta person på Socialförvaltningen och höra om de har frågor och feedback.",null],["Tomelilla kommun","Kommun","Skåne län","Group I","Non-contracted & Rank 2/below customers",252000,"2025-04-11",null,"Leyla","Anbud pågår",null,null],["Riksgäldskontoret","B2B Public","Stockholms län","Upphandlar själva","Opportunities - Translations",80000,"2025-08-29",null,null,"Ej startad",null,null],["Kammarkollegiet","Myndighet","Nationellt","Upphandlar själva","Opportunities - Translations",105250000,"2025-09-30","Hög","Molly","Anbud pågår",null,null],["Region Skåne","Region","Skåne län","Upphandlar själva","Opportunities - Translations",2500000,"2025-09-30","Medium",null,"Ej startad",null,null],["Sveriges Radio AB","B2B Public","Nationellt","Upphandlar själva","Opportunities - Translations",670000,"2025-10-14",null,null,"Ej startad",null,null],["Vattenfall AB","B2B Public","Nationellt","Upphandlar själva","Opportunities - Translations",null,"2025-10-31",null,null,"Ej startad",null,null],["Malmö stad","Kommun","Skåne län","Upphandlar själva","Opportunities - Translations",875000,"2025-12-01",null,null,"Ej startad",null,null],["Finansinspektionen","B2B Public","Nationellt","Upphandlar själva","Opportunities - Translations",350000,"2025-12-31",null,null,"Ej startad",null,null],["Kungsbacka kommun","Kommun","Hallands län","Upphandlar själva","Opportunities - Interpretations",1520000,"2026-02-28","Medium",null,"Ej startad",null,null],["Piteå kommun","Kommun","Norrbottens län","Upphandlar själva","Opportunities - Interpretations",535450.16,"2026-03-31",null,"Leyla","Kontakt initierad","Leyla pratat med upphandlaren. Möte inbokat v. 35. De har ej påbörjat den än. Har transvoice nu.",null],["Lycksele kommun","Kommun","Västerbottens län","Upphandlar själva","Opportunities - Interpretations",325000,"2026-04-30",null,"Leyla","Kontakt initierad","Leyla pratat med upphandlaren. Han ska hitta tid för möte.De hatr ej påbörjat än. Har Språkservice nu.",null],["Region Stockholm","Region","Stockholms län","Upphandlar själva","Opportunities - Interpretations",160000000,"2026-05-31","Medium",null,"Förberedelse / RFI",null,null],["Östra göinge, Höörs kommun, Osby, Hörby, Brömölla kommun","Kommun","Skåne län","Group G","Opportunities - Interpretations",1800000,"2026-10-31","Medium","Molly","Anbud pågår","Upphandling avbruten. Leyla har kontakt.",null],["Höglandsförbundet (Nässjö Kommun, Vetlanda kommun, Eksjö kommun, Sävsjö kommun, Aneby kommun)","Kommun","Jönköpings län","Group M","Customers at risk",1635000,"2026-10-31","Medium",null,"Anbud pågår",null,null],["Ale kommun","Kommun","Västra Götalands län","Upphandlar själva","Opportunities - Interpretations",785000,"2026-11-30",null,"Molly","Anbud pågår",null,null],["Svalövs kommun","Kommun","Skåne län","Upphandlar själva","Customers at risk",250000,"2026-11-30",null,", s","Förberedelse / RFI",null,null],["Karlskrona kommun","Kommun","Blekinge län","Group O","Deal break",1954665.11,"2027-01-31","Medium","Molly","Anbud pågår",null,null],["Ronneby kommun (Upphandlar åt Grupp O)","Kommun","Blekinge län","Group O","Deal break",1144738.38,"2027-01-31","Medium","Molly","Anbud pågår",null,null],["Olofströms kommun","Kommun","Blekinge län","Group O","Deal break",694632.39,"2027-01-31",null,"Molly","Anbud pågår",null,null],["Sölvesborgs kommun","Kommun","Blekinge län","Group O","Deal break",467958.04,"2027-01-31",null,"Molly","Anbud pågår",null,null],["Lunds Universitet","B2B Public","Skåne län","Upphandlar själva","Deal break",1500000,"2027-02-10","Medium",null,"Ej startad",null,null],["Polismyndigheten","Myndighet","Nationellt","Kammarkollegiet","Opportunities - Interpretations",54310641.37,"2027-02-14","Hög","Leyla","Ej startad",null,null],["Region Kronoberg","Region","Kronobergs län","Upphandlar själva","Deal break",15750000,"2027-02-27","Hög","Leyla","Kontakt initierad","Leyla har dialog och sagt att vi gärna kommer och träffa dom.",null],["Varbergs kommun","Kommun","Hallands län","Upphandlar själva","Contracted / Safe Customers",1250000,"2027-02-28","Medium","Leyla","Kontakt initierad","Ny upphandlare. Kontakt tagen och vi ska boka in möte. Mycket bra dialog med Varbergs kommun. ",null],["Luleå Kommun (Översättning)","Kommun","Norrbottens län","Upphandlar själva","Deal break",1250000,"2027-02-28","Medium","Leyla","Kontakt initierad","Dialog med upphandlare + mkt goda referenser från beställare. Möte inplanerat. ",null],["Kävlinge kommun","Kommun","Skåne län","Group H","Deal break",800000,"2027-02-28",null,"Leyla",null,null,null],["Burlövs kommun","Kommun","Skåne län","Group H","Deal break",742000,"2029-03-31",null,"Leyla",null,null,null],["Lomma kommun (Upphandlar för Svedala, Kävlinge och Burlöv)","Kommun","Skåne län","Group H","Deal break",650000,"2027-02-28","Medium","Leyla","Kontakt initierad","Möte bokat för den 27 augusti. Ny upphandlare Marjorie Diaz Sanchez",null],["Staffanstorps kommun","Kommun","Skåne län","Upphandlar själva","Deal break",350000,"2027-02-28",null,"Johan Nilsson","Ej startad",null,null],["Svedala kommun","Kommun","Skåne län","Group H","Deal break",250000,"2027-02-28",null,"Leyla","Ej startad",null,null],["Laholms kommun","Kommun","Hallands län","Upphandlar själva","Contracted / Safe Customers",750000,"2027-03-05",null,"Johan Nilsson","Kontakt initierad","Ingen dedikerad upphandlare har hört av angående det. Johan har möte med upphandlare för att gå igenom statistik.",null],["Region Sörmland","Region","Södermanlands län","Group C","Deal break",22407533.63,"2027-03-31","Hög","Fredrik","Ej startad","Vi kan inte göra så mycket mer just nu. Det finns beslut från högsta regionstyrelsen att digitala tjänster ska med där.",null],["Eskilstuna kommun","Kommun","Södermanlands län","Group C","Deal break",6803318.69,"2027-03-31","Hög",null,"Ej startad","Eskiltuna har sin egen upphandlare, men de använder Region sörmlands leverantör.",null],["Sigtuna kommun","Kommun","Stockholms län","Upphandlar själva","Contracted / Safe Customers",1900000,"2027-03-31","Medium",null,"Ej startad",null,null],["Åsele kommun","Kommun","Västerbottens län","Upphandlar själva","Contracted / Safe Customers",100000,"2027-03-31",null,null,"Ej startad",null,null],["Nyköping kommun","Kommun","Södermanlands län","Group C","Deal break",2091273.8,"2027-03-31","Medium",null,"Ej startad",null,null],["Strängnäs kommun","Kommun","Södermanlands län","Group C","Deal break",1346807.4,"2027-03-31","Medium",null,"Ej startad",null,null],["Vänersborg kommun","Kommun","Västra Götalands län","Upphandlar själva","Deal break",1111689.95,"2027-03-31","Medium",null,"Ej startad",null,null],["Oxelösund kommun","Kommun","Södermanlands län","Group C","Deal break",602697.2,"2027-03-31",null,null,"Ej startad",null,null],["Trosa kommun","Kommun","Södermanlands län","Group C","Deal break",499576.14,"2027-03-31",null,null,"Ej startad",null,null],["Gnesta kommun","Kommun","Södermanlands län","Group C","Deal break",327173.39,"2027-03-31",null,null,"Ej startad",null,null],["Huddinge kommun","Kommun","Stockholms län","Upphandlar själva","Contracted / Safe Customers",5000000,"2027-04-16","Hög",null,"Förberedelse / RFI",null,null],["Ekerö kommun","Kommun","Stockholms län","Upphandlar själva","Deal break",950000,"2027-04-30",null,null,"Ej startad",null,null],["Örkelljunga kommun","Kommun","Skåne län","Upphandlar själva","Contracted / Safe Customers",400000,"2027-05-04",null,"Johan Nilsson","Ej startad","Ska föra en dialog inom sig kring när dom ska sätta upp möte. Ska kontakta beställare kring statistik möte",null],["Vaggeryds kommun","Kommun","Jönköpings län","Upphandlar själva","Contracted / Safe Customers",525000,"2027-05-24",null,null,"Ej startad",null,null],["Göteborgs Universitet","B2B Public","Västra Götalands län","Upphandlar själva","Deal break",3500000,"2027-06-12","Medium",null,"Ej startad",null,null],["Ålands hälso- och sjukvård","Region","Åland","Upphandlar själva","Contracted / Safe Customers",1505728.25,"2027-06-30","Medium",null,"Ej startad",null,null],["Umeå kommun","Kommun","Västerbottens län","Group J","Deal break",3152602.03,"2027-06-30","Medium",null,"Ej startad",null,null],["Vännäs kommun","Kommun","Västerbottens län","Group J","Deal break",145208.35,"2027-06-30",null,null,"Ej startad",null,null],["Nordmalings kommun","Kommun","Västerbottens län","Group J","Deal break",121501.37,"2027-06-30",null,null,"Ej startad",null,null],["Robertsfors kommun","Kommun","Västerbottens län","Group J","Deal break",120040.75,"2027-06-30",null,null,"Ej startad",null,null],["Vindelns kommun","Kommun","Västerbottens län","Group J","Deal break",108932.89,"2027-06-30",null,null,"Ej startad",null,null],["Bjurholms kommun","Kommun","Västerbottens län","Group J","Deal break",43909.27,"2027-06-30",null,null,"Ej startad",null,null],["Formas","B2B Public","Nationellt","Upphandlar själva","Deal break",875000,"2027-07-26",null,null,"Ej startad",null,null],["Botkyrka kommun","Kommun","Stockholms län","Group A","Contracted / Safe Customers",5400000,"2027-09-30","Hög","Fredrik","Förberedelse / RFI",null,null],["Haninge kommun","Kommun","Stockholms län","Group A","Contracted / Safe Customers",5200000,"2027-09-30","Hög","Fredrik","Förberedelse / RFI",null,null],["Region Jämtland Härjedalen","Region","Jämtlands län","Upphandlar själva","Contracted / Safe Customers",5000000,"2027-09-30","Hög","Fredrik","Ej startad",null,null],["Tyresö kommun","Kommun","Stockholms län","Group A","Contracted / Safe Customers",2000000,"2027-09-30","Medium","Fredrik","Förberedelse / RFI",null,null],["Nynäshamn kommun","Kommun","Stockholms län","Group A","Contracted / Safe Customers",750000,"2027-09-30",null,"Fredrik","Ej startad",null,null],["Luleå kommun","Kommun","Norrbottens län","Upphandlar själva","Contracted / Safe Customers",1000000,"2027-10-31","Medium",null,"Ej startad",null,null],["Arvika kommun","Kommun","Värmlands län","Group Q","Deal break",690676.39,"2027-10-31",null,null,"Ej startad",null,null],["Eda kommun","Kommun","Värmlands län","Group Q","Deal break",479839.41,"2027-10-31",null,null,"Ej startad",null,null],["Hammarö kommun","Kommun","Värmlands län","Group Q","Deal break",268517.28,"2027-10-31",null,null,"Ej startad",null,null],["Forshaga kommun","Kommun","Värmlands län","Group Q","Deal break",221933.63,"2027-10-31",null,null,"Ej startad",null,null],["Kils kommun","Kommun","Värmlands län","Group Q","Deal break",204474.47,"2027-10-31",null,null,"Ej startad",null,null],["Region Norrbotten","Region","Norrbottens län","Upphandlar själva","Deal break",5625000,"2027-11-10","Hög","Fredrik","Kontakt initierad","Leyla har frågat om vi kan träffa upphandlaren.",null],["Ockelbo kommun","Kommun","Gävleborgs län","Direktupphandling","Contracted / Safe Customers",170000,"2027-11-30",null,null,"Ej startad",null,null],["Hälsinglands Utbildningsförbund","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",null,"2027-12-14",null,null,"Ej startad",null,null],["Söderhamns kommun","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",1094400,"2027-12-14","Medium",null,"Ej startad",null,null],["Hudiksvalls kommun","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",920800,"2027-12-14",null,null,"Ej startad",null,null],["Ljusdals kommun","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",677600,"2027-12-14",null,null,"Ej startad",null,null],["Bollnäs kommun","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",497600,"2027-12-14",null,null,"Ej startad",null,null],["Älvkarleby kommun","Kommun","Uppsala län","Inköpssamverkan Mitt","Contracted / Safe Customers",331200,"2027-12-14",null,null,"Ej startad",null,null],["Ovanåkers kommun","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",236000,"2027-12-14",null,null,"Ej startad",null,null],["Nordanstigs kommun","Kommun","Gävleborgs län","Inköpssamverkan Mitt","Contracted / Safe Customers",155200,"2027-12-14",null,null,"Ej startad",null,null],["Region Stockholm (Översättning)","Region","Stockholms län","Upphandlar själva","Deal break",975000,"2027-12-14",null,null,"Ej startad",null,null],["Region Blekinge","Region","Blekinge län","Upphandlar själva","Contracted / Safe Customers ",7000000,"2028-01-31","Medium","Lava","Ej startad",null,null],["Skellefteå kommun","Kommun","Västerbottens län","Group K","Deal break",1813093.78,"2028-01-31","Medium",null,"Ej startad",null,null],["Norsjö kommun","Kommun","Västerbottens län","Group K","Deal break",75478.21,"2028-01-31",null,null,"Ej startad",null,null],["Malå kommun","Kommun","Västerbottens län","Group K","Deal break",72423.4,"2028-01-31",null,null,"Ej startad",null,null],["Karlskoga kommun","Kommun","Örebro län","Upphandlar själva","Contracted / Safe Customers ",1000000,"2028-02-11","Medium",null,"Ej startad",null,null],["Migrationsverket","Myndighet","Nationellt","Upphandlar själva","Non-contracted & Rank 2/below customers",80784000,"2028-02-29","Hög","Fredrik","Ej startad",null,null],["Region Halland","Region","Hallands län","Upphandlar själva","Contracted / Safe Customers ",23333333.33,"2028-02-29","Hög","Fredrik","Ej startad",null,null],["Båstads kommun","Kommun","Skåne län","Upphandlar själva","Contracted / Safe Customers ",400729.52,"2028-02-29",null,null,"Ej startad",null,null],["Hofors kommun","Kommun","Gävleborgs län","Direktupphandling","Contracted / Safe Customers ",200000,"2028-02-29",null,null,"Ej startad",null,null],["Arbetsförmedlingen (Tolk - Plats)","Myndighet","Nationellt","Upphandlar själva","Deal break",2500000,"2028-03-10",null,null,"Ej startad",null,null],["Region Västernorrland","Region","Västernorrlands län","Upphandlar själva","Contracted / Safe Customers ",8850000,"2028-04-30","Hög",null,"Ej startad",null,null],["Kristianstads kommun","Kommun","Skåne län","Upphandlar själva","Deal break",2500000,"2028-05-31","Medium",null,"Ej startad",null,null],["Kristinehamns kommun","Kommun","Värmlands län","Upphandlar själva","Contracted / Safe Customers ",1000000,"2028-05-31","Medium",null,"Ej startad",null,null],["Sollefteå kommun","Kommun","Västernorrlands län","Upphandlar själva","Contracted / Safe Customers ",400000,"2028-05-31",null,null,"Ej startad",null,null],["Kalix kommun","Kommun","Norrbottens län","Upphandlar själva","Deal break",235360.92,"2028-06-29",null,null,"Ej startad",null,null],["Region Skåne","Region","Skåne län","Upphandlar själva","Contracted / Safe Customers ",190000000,"2028-06-30","Hög",null,"Ej startad",null,null],["Vellinge kommun","Kommun","Skåne län","Upphandlar själva","Contracted / Safe Customers ",1000000,"2028-07-31","Medium",null,"Ej startad",null,null],["Åstorps, Bjuvs, Klippans, Perstorps  kommun","Kommun","Skåne län","Group F","Non-contracted & Rank 2/below customers",3000000,"2028-07-31","Medium",null,"Ej startad",null,null],["Arjeplogs kommun","Kommun","Norrbottens län","Upphandlar själva","Contracted / Safe Customers ",62500,"2028-09-13",null,null,"Ej startad",null,null],["Stockholms stad","Kommun","Stockholms län","Upphandlar själva","Non-contracted & Rank 2/below customers",45000000,"2028-09-30","Hög",null,"Ej startad",null,null],["Region Östergötland","Region","Östergötlands län","Group L","Non-contracted & Rank 2/below customers",29311509.88,"2028-09-30","Hög",null,"Ej startad",null,null],["Region Värmland","Region","Värmlands län","Upphandlar själva","Contracted / Safe Customers ",20000000,"2028-09-30","Hög","Fredrik och Leyla","Kontakt initierad",null,null],["Region Gävleborg","Region","Gävleborgs län","Upphandlar själva","Non-contracted & Rank 2/below customers",15500000,"2028-09-30","Hög","Leyla","Ej startad",null,null],["Region Kalmar","Region","Kalmar län","Group L","Non-contracted & Rank 2/below customers",13232102.86,"2028-09-30","Hög",null,"Ej startad",null,null],["Norrköpings kommun","Kommun","Östergötlands län","Group L","Deal break",6952924.38,"2028-09-30","Hög",null,"Ej startad",null,null],["Linköpings kommun","Kommun","Östergötlands län","Group L","Deal break",6788358.12,"2028-09-30","Hög",null,"Ej startad",null,null],["Kalmar kommun","Kommun","Kalmar län","Group L","Deal break",1904801.0,"2028-09-30","Medium",null,"Ej startad",null,null],["Motala kommun","Kommun","Östergötlands län","Group L","Deal break",1493385.36,"2028-09-30","Medium",null,"Ej startad",null,null],["Ljungby kommun","Kommun","Kronobergs län","Group N","Contracted / Safe Customers ",1202990.03,"2028-09-30","Medium",null,"Ej startad",null,null],["Alvesta kommun","Kommun","Kronobergs län","Group N","Contracted / Safe Customers ",922568.41,"2028-09-30",null,null,"Ej startad",null,null],["Älmhults kommun","Kommun","Kronobergs län","Group N","Contracted / Safe Customers ",917403.45,"2028-09-30",null,null,"Ej startad",null,null],["Västerviks kommun","Kommun","Kalmar län","Group L","Deal break",833517.41,"2028-09-30",null,null,"Ej startad",null,null],["Finspångs kommun","Kommun","Östergötlands län","Group L","Deal break",744288.3,"2028-09-30",null,null,"Ej startad",null,null],["Mjölby kommun","Kommun","Östergötlands län","Group L","Deal break",733067.87,"2028-09-30",null,null,"Ej startad",null,null],["Oskarshamns kommun","Kommun","Kalmar län","Group L","Deal break",673225.6,"2028-09-30",null,null,"Ej startad",null,null],["Nybro kommun","Kommun","Kalmar län","Group L","Deal break",605546.83,"2028-09-30",null,null,"Ej startad",null,null],["Gnosjö kommun","Kommun","Jönköpings län","Group L","Deal break",580577.11,"2028-09-30",null,null,"Ej startad",null,null],["Markaryds kommun","Kommun","Kronobergs län","Group N","Contracted / Safe Customers ",539542.23,"2028-09-30",null,null,"Ej startad",null,null],["Hultsfreds kommun","Kommun","Kalmar län","Group L","Deal break",528962.97,"2028-09-30",null,null,"Ej startad",null,null],["Skurups kommun","Kommun","Skåne län","Upphandlar själva","Non-contracted & Rank 2/below customers",525000,"2028-09-30",null,null,"Ej startad",null,null],["Lessebo kommun","Kommun","Kronobergs län","Group N","Contracted / Safe Customers ",478382.0,"2028-09-30",null,null,"Ej startad",null,null],["Uppvidinge kommun","Kommun","Kronobergs län","Group N","Contracted / Safe Customers ",448371.81,"2028-09-30",null,null,"Ej startad",null,null],["Vimmerby kommun","Kommun","Kalmar län","Group L","Deal break",386481.36,"2028-09-30",null,null,"Ej startad",null,null],["Mönsterås kommun","Kommun","Kalmar län","Group L","Deal break",300992.4,"2028-09-30",null,null,"Ej startad",null,null],["Mörbylånga kommun","Kommun","Kalmar län","Group L","Deal break",293868.32,"2028-09-30",null,null,"Ej startad",null,null],["Borgholms kommun","Kommun","Kalmar län","Group L","Deal break",230820.21,"2028-09-30",null,null,"Ej startad",null,null],["Emmaboda kommun","Kommun","Kalmar län","Group L","Deal break",224408.53,"2028-09-30",null,null,"Ej startad",null,null],["Söderköpings kommun","Kommun","Östergötlands län","Group L","Deal break",221915.1,"2028-09-30",null,null,"Ej startad",null,null],["Valdemarsviks kommun","Kommun","Östergötlands län","Group L","Deal break",196357.47,"2028-09-30",null,null,"Ej startad",null,null],["Kinda kommun","Kommun","Östergötlands län","Group L","Deal break",186757.77,"2028-09-30",null,null,"Ej startad",null,null],["Högsby kommun","Kommun","Kalmar län","Group L","Deal break",185938.5,"2028-09-30",null,null,"Ej startad",null,null],["Åtvidabergs kommun","Kommun","Östergötlands län","Group L","Deal break",184157.48,"2028-09-30",null,null,"Ej startad",null,null],["Torsås kommun","Kommun","Kalmar län","Group L","Deal break",149605.69,"2028-09-30",null,null,"Ej startad",null,null],["Vadstena kommun","Kommun","Östergötlands län","Group L","Deal break",136515.19,"2028-09-30",null,null,"Ej startad",null,null],["Ödeshögs kommun","Kommun","Östergötlands län","Group L","Deal break",131510.52,"2028-09-30",null,null,"Ej startad",null,null],["Ängelholms kommun","Kommun","Skåne län","Upphandlar själva","Contracted / Safe Customers ",1600000,"2028-10-13","Medium",null,"Ej startad",null,null],["Malmö stad","Kommun","Skåne län","Upphandlar själva","Non-contracted & Rank 2/below customers",25000000,"2028-10-31","Hög","Johan","Ej startad","Har ej upphandlat översätningstjänster.",null],["Arbetsförmedlingen (Tolk express)","Myndighet","Nationell","Upphandlar själva","Deal break",4750000,"2028-10-31","Medium",null,"Ej startad",null,null],["Danderyd kommun","Kommun","Stockholms län","STIC - Adda","Deal break",4543572,"2028-11-01","Medium",null,"Ej startad",null,null],["Upplands-Bro kommun","Kommun","Stockholms län","STIC - Adda","Deal break",3838892,"2028-11-01","Medium",null,"Ej startad",null,null],["Järfälla kommun","Kommun","Stockholms län","STIC - Adda","Deal break",3640746,"2028-11-01","Medium",null,"Ej startad",null,null],["Sollentuna kommun","Kommun","Stockholms län","STIC - Adda","Deal break",2879858,"2028-11-01","Medium",null,"Ej startad",null,null],["Sundbyberg kommun","Kommun","Stockholms län","STIC - Adda","Deal break",2711078,"2028-11-01","Medium",null,"Ej startad",null,null],["Solna kommun","Kommun","Stockholms län","STIC - Adda","Deal break",2281224,"2028-11-01","Medium",null,"Ej startad",null,null],["Täby kommun","Kommun","Stockholms län","STIC - Adda","Deal break",2099044,"2028-11-01","Medium",null,"Ej startad",null,null],["Nacka kommun","Kommun","Stockholms län","STIC - Adda","Deal break",2074364,"2028-11-01","Medium",null,"Ej startad",null,null],["Lidingö stad","Kommun","Stockholms län","STIC - Adda","Deal break",1053022,"2028-11-01","Medium",null,"Ej startad",null,null],["Värmdö kommun","Kommun","Stockholms län","STIC - Adda","Deal break",705222,"2028-11-01",null,null,"Ej startad",null,null],["Vaxholm kommun","Kommun","Stockholms län","STIC - Adda","Deal break",384688,"2028-11-01",null,null,"Ej startad",null,null],["Vallentuna kommun","Kommun","Stockholms län","STIC - Adda","Deal break",34492,"2028-11-01",null,null,"Ej startad",null,null],["Upplands Väsby kommun","Kommun","Stockholms län","STIC - Adda","Deal break",13482,"2028-11-01",null,null,"Ej startad",null,null],["Övertorneå kommun","Kommun","Norrbottens län","Upphandlar själva","Deal break",50000,"2028-11-30",null,null,"Ej startad",null,null]];
+
+  const PHASES = ['Ej startad', 'Bevakning', 'Kontakt initierad', 'Dialog pågår', 'Möte bokat', 'Förberedelse / RFI',
+    'Upphandling annonserad', 'Anbud pågår', 'Anbud inlämnat', 'Tilldelning', 'Avtal klart', 'Ej aktuell / förlorad'];
+  const PRIOS = ['Försenad', 'Hög', 'Medium', 'Låg'];
+  const PRIO_CLASS = { 'Försenad': 'p-sen', 'Hög': 'p-hog', 'Medium': 'p-med', 'Låg': 'p-lag' };
+  const ALL = '(Alla)';
+  const STORE_KEY = 'growthplan-se:filters:v1';
+
+  // Excel TRIM: strip ends and collapse inner runs of spaces
+  const clean = v => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
+  const isoOk = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+  const ROWS = RAW.map((r, i) => ({
+    i,
+    org: clean(r[0]), typ: clean(r[1]), lan: clean(r[2]), grupp: clean(r[3]), kund: clean(r[4]),
+    acv: typeof r[5] === 'number' && isFinite(r[5]) ? r[5] : null,
+    date: isoOk(r[6]) ? r[6] : null,
+    prio: clean(r[7]), ansv: clean(r[8]), fas: clean(r[9]), komm: clean(r[10]),
+    deadline: isoOk(r[11]) ? r[11] : clean(r[11])
+  }));
+  const ALL_ACV = ROWS.reduce((s, r) => s + (r.acv || 0), 0);
+
+  const FIELDS = [
+    { k: 'typ', l: 'Typ' }, { k: 'lan', l: 'Län' }, { k: 'grupp', l: 'Grupp' }, { k: 'kund', l: 'Kundstatus' },
+    { k: 'prio', l: 'Prioritet', order: PRIOS }, { k: 'ansv', l: 'Ansvarig' }, { k: 'fas', l: 'Fas', order: PHASES }
+  ];
+  const coll = new Intl.Collator('sv', { sensitivity: 'base', numeric: true });
+  const rankIn = (arr, v) => { const i = arr.indexOf(v); return i < 0 ? arr.length : i; };
+  for (const f of FIELDS) {
+    const vals = [...new Set(ROWS.map(r => r[f.k]).filter(Boolean))];
+    vals.sort((a, b) => (f.order ? rankIn(f.order, a) - rankIn(f.order, b) : 0) || coll.compare(a, b));
+    f.options = vals;
+  }
+
+  // Quarter grid: from the quarter of the earliest contract end to the quarter of the latest
+  const dated = ROWS.filter(r => r.date).map(r => r.date).sort();
+  const minD = dated[0], maxD = dated[dated.length - 1];
+  const qOf = d => ({ y: +d.slice(0, 4), q: Math.floor((+d.slice(5, 7) - 1) / 3) });
+  const Q0 = qOf(minD), Q1 = qOf(maxD);
+  const NQ = (Q1.y - Q0.y) * 4 + (Q1.q - Q0.q) + 1;
+  const pad = n => String(n).padStart(2, '0');
+  const lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const QUARTERS = Array.from({ length: NQ }, (_, k) => {
+    const t = Q0.q + k, y = Q0.y + Math.floor(t / 4), q = t % 4;
+    return { k, y, q: q + 1, label: `${y} Q${q + 1}`, start: `${y}-${pad(q * 3 + 1)}-01`, end: `${y}-${pad(q * 3 + 3)}-${pad(lastDay(y, q * 3 + 3))}` };
+  });
+  const qIndex = d => { const o = qOf(d); return (o.y - Q0.y) * 4 + o.q - Q0.q; };
+  const YEARS = [...new Set(QUARTERS.map(q => q.y))];
+
+  const RS_ROW = ROWS.find(r => r.org === 'Region Stockholm');
+
+  // Formatting (sv-SE)
+  const nf0 = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 });
+  const nf1 = new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const fmtKr = v => nf0.format(Math.round(v)) + ' kr';
+  const fmtM = v => nf1.format(v / 1e6);
+  const fmtPct = v => nf1.format(v * 100) + ' %';
+
+  // State
+  const DEFAULTS = { typ: ALL, lan: ALL, grupp: ALL, kund: ALL, prio: ALL, ansv: ALL, fas: ALL, from: '2027-01-01', to: '2027-12-31', rs: false };
+  let S = Object.assign({}, DEFAULTS);
+  let drillQ = null;
+  let sort = { k: 'date', dir: 1 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+      for (const f of FIELDS) if (saved[f.k] === ALL || f.options.includes(saved[f.k])) S[f.k] = saved[f.k];
+      if (saved.from === '' || isoOk(saved.from)) S.from = saved.from;
+      if (saved.to === '' || isoOk(saved.to)) S.to = saved.to;
+      if (typeof saved.rs === 'boolean') S.rs = saved.rs;
+    }
+  } catch (e) { /* storage unavailable */ }
+  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
+
+  // Same rule as column AA ("I urval") in the workbook
+  function matches(r, skipKey) {
+    if (r.date === null || r.acv === null) return false;
+    const inDate = r.org === 'Region Stockholm'
+      ? S.rs
+      : (!S.from || r.date >= S.from) && (!S.to || r.date <= S.to);
+    if (!inDate) return false;
+    for (const f of FIELDS) {
+      if (f.k === skipKey) continue;
+      if (S[f.k] !== ALL && r[f.k] !== S[f.k]) return false;
+    }
+    return true;
+  }
+
+  const $ = id => document.getElementById(id);
+  const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  /* ---------- Filter controls ---------- */
+  $('src').textContent = `Källa: Gantt - kontaktplan · ${ROWS.length} rader · ${nf1.format(ALL_ACV / 1e6)} MSEK totalt ACV`;
+
+  const selects = {};
+  for (const f of FIELDS) {
+    const wrap = h('div', 'field');
+    const lab = h('label', null, f.l); lab.htmlFor = 'f-' + f.k;
+    const sel = h('select', 'cell'); sel.id = 'f-' + f.k;
+    sel.appendChild(new Option(ALL, ALL));
+    for (const v of f.options) sel.appendChild(new Option(v, v));
+    sel.addEventListener('change', () => { S[f.k] = sel.value; update(); });
+    wrap.append(lab, sel);
+    $('selects').appendChild(wrap);
+    selects[f.k] = sel;
+  }
+
+  const PRESETS = [{ l: 'Hela perioden', from: '', to: '' }].concat(YEARS.filter(y => y <= 2028).map(y => ({ l: String(y), from: `${y}-01-01`, to: `${y}-12-31` })));
+  const presetBtns = PRESETS.map(p => {
+    const b = h('button', 'chipbtn', p.l); b.type = 'button';
+    b.addEventListener('click', () => { S.from = p.from; S.to = p.to; update(); });
+    $('presets').appendChild(b);
+    return b;
+  });
+
+  $('f-from').addEventListener('change', e => { S.from = isoOk(e.target.value) ? e.target.value : ''; update(); });
+  $('f-to').addEventListener('change', e => { S.to = isoOk(e.target.value) ? e.target.value : ''; update(); });
+  $('rs-ja').addEventListener('change', () => { S.rs = true; update(); });
+  $('rs-nej').addEventListener('change', () => { S.rs = false; update(); });
+  $('reset').addEventListener('click', () => { S = Object.assign({}, DEFAULTS); drillQ = null; update(); });
+  $('drill-clear').addEventListener('click', () => { drillQ = null; update(); });
+
+  if (RS_ROW) {
+    $('rs-note').textContent = `${fmtM(RS_ROW.acv)} MSEK · avtalsutgång ${RS_ROW.date || '–'}`;
+  }
+
+  function syncControls(sel) {
+    for (const f of FIELDS) {
+      const s = selects[f.k];
+      if (s.value !== S[f.k]) s.value = S[f.k];
+      s.classList.toggle('is-set', S[f.k] !== ALL);
+      // Show how many contracts each option would give with the other filters unchanged
+      const counts = new Map();
+      for (const r of ROWS) if (matches(r, f.k)) counts.set(r[f.k], (counts.get(r[f.k]) || 0) + 1);
+      let tot = 0; counts.forEach(n => { tot += n; });
+      for (const o of s.options) {
+        const n = o.value === ALL ? tot : (counts.get(o.value) || 0);
+        o.textContent = `${o.value} (${n})`;
+      }
+    }
+    $('f-from').value = S.from; $('f-to').value = S.to;
+    $('f-from').classList.toggle('is-set', !!S.from); $('f-to').classList.toggle('is-set', !!S.to);
+    PRESETS.forEach((p, i) => presetBtns[i].setAttribute('aria-pressed', String(p.from === S.from && p.to === S.to)));
+    $('rs-ja').checked = S.rs; $('rs-nej').checked = !S.rs;
+  }
+
+  /* ---------- Key figures ---------- */
+  function renderKpis(sel, total) {
+    const rng = !S.from && !S.to ? 'hela perioden' : `${S.from || 'ingen gräns'} – ${S.to || 'ingen gräns'}`;
+    $('k-title').textContent = `Nyckeltal (${rng})` + (S.rs ? ' + Region Stockholm tolkning' : '');
+    const n = sel.length;
+    $('k-n').textContent = nf0.format(n);
+    $('k-n-s').textContent = n ? `av ${ROWS.length} rader i kontaktplanen` : 'Inga avtal matchar filtret';
+
+    const acvEl = $('k-acv'); acvEl.textContent = '';
+    if (n) { acvEl.append(fmtM(total)); acvEl.appendChild(h('span', 'u', 'MSEK')); } else acvEl.textContent = '–';
+    $('k-acv-s').textContent = n ? fmtKr(total) : '';
+
+    const ds = sel.map(r => r.date).sort();
+    $('k-first').textContent = n ? ds[0] : '–';
+    $('k-last').textContent = n ? ds[ds.length - 1] : '–';
+    const firstOrgs = n ? sel.filter(r => r.date === ds[0]) : [];
+    const lastOrgs = n ? sel.filter(r => r.date === ds[ds.length - 1]) : [];
+    const who = arr => arr.length === 1 ? arr[0].org : `${arr.length} avtal`;
+    $('k-first-s').textContent = n ? who(firstOrgs) : '';
+    $('k-last-s').textContent = n ? who(lastOrgs) : '';
+
+    const share = ALL_ACV ? total / ALL_ACV : 0;
+    $('k-share').textContent = fmtPct(share);
+    $('k-meter').style.width = Math.min(100, share * 100) + '%';
+    $('k-share-s').textContent = `av ${fmtM(ALL_ACV)} MSEK totalt`;
+  }
+
+  /* ---------- Quarter table ---------- */
+  function renderQuarterTable(qs, total, n) {
+    const tb = $('qt').tBodies[0];
+    tb.textContent = '';
+    for (const q of qs) {
+      const tr = h('tr');
+      if (!q.n) tr.classList.add('zero');
+      if (q.q === 1 && q.k > 0) tr.classList.add('yr-start');
+      if (drillQ === q.k) tr.classList.add('is-sel');
+      const td0 = h('td'); const b = h('button', 'qbtn', q.label); b.type = 'button';
+      b.setAttribute('aria-pressed', String(drillQ === q.k));
+      b.setAttribute('aria-label', `${q.label}: visa i listan`);
+      td0.appendChild(b);
+      tr.append(td0, h('td', null, nf0.format(q.n)), h('td', null, fmtM(q.acv)), h('td', null, fmtM(q.cum)));
+      tr.addEventListener('click', () => toggleDrill(q.k));
+      tb.appendChild(tr);
+    }
+    const sumQ = qs.reduce((s, q) => s + q.acv, 0);
+    $('qt-n').textContent = nf0.format(qs.reduce((s, q) => s + q.n, 0));
+    $('qt-acv').textContent = fmtM(sumQ);
+    $('qt-cum').textContent = fmtM(qs.length ? qs[qs.length - 1].cum : 0);
+    const diff = total - sumQ;
+    const c = $('ctrl'); c.textContent = fmtKr(Math.abs(diff) < 0.5 ? 0 : diff); c.classList.toggle('warn', Math.abs(diff) >= 0.5);
+  }
+
+  function toggleDrill(k) {
+    // keep keyboard focus on the same quarter after the chart and table are redrawn
+    const a = document.activeElement;
+    const where = a && a.closest ? (a.closest('#chart') ? '#chart .hit' : a.closest('#qt') ? '#qt .qbtn' : null) : null;
+    drillQ = drillQ === k ? null : k;
+    update(true);
+    if (where) { const t = document.querySelectorAll(where)[k]; if (t) t.focus({ preventScroll: true }); }
+  }
+
+  /* ---------- Chart ---------- */
+  const NS = 'http://www.w3.org/2000/svg';
+  const sv = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const a in attrs) e.setAttribute(a, attrs[a]); if (parent) parent.appendChild(e); return e; };
+  let lastQs = null;
+  const chartEl = $('chart'), tip = $('tip');
+
+  function niceStep(max, target) {
+    const raw = max / target, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+  }
+  function barPath(x, y, w, hgt, r) {
+    r = Math.min(r, hgt, w / 2);
+    return `M${x},${y + hgt}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + hgt}Z`;
+  }
+
+  function drawChart(qs) {
+    lastQs = qs;
+    const old = chartEl.querySelector('svg'); if (old) old.remove();
+    const W = chartEl.clientWidth, H = chartEl.clientHeight;
+    if (!W || !H) return;
+    const narrow = W < 520;
+    const M = { t: 22, r: narrow ? 8 : 14, b: 44, l: 40 };
+    const pw = W - M.l - M.r, ph = H - M.t - M.b;
+    const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Stapeldiagram med ACV per kvartal och linje med ackumulerat ACV, i miljoner kronor' });
+    chartEl.insertBefore(svg, tip);
+
+    const maxM = Math.max(0, ...qs.map(q => q.cum / 1e6), ...qs.map(q => q.acv / 1e6));
+    const empty = maxM === 0;
+    const step = empty ? 50 : niceStep(maxM, narrow ? 4 : 5);
+    const top = empty ? 200 : Math.ceil(maxM / step - 1e-9) * step;
+    const y = v => M.t + ph - (v / 1e6) / top * ph;
+    const band = pw / qs.length;
+    const cx = k => M.l + band * (k + .5);
+    const bw = Math.max(4, Math.min(24, band * .56));
+
+    // unit + grid
+    sv('text', { x: M.l - 8, y: M.t - 10, 'text-anchor': 'end', class: 'ax' }, svg).textContent = 'MSEK';
+    const grid = sv('g', {}, svg);
+    for (let v = 0; v <= top + 1e-9; v += step) {
+      const yy = Math.round(M.t + ph - v / top * ph) + .5;
+      sv('line', { x1: M.l, x2: M.l + pw, y1: yy, y2: yy, stroke: 'var(--rule)', 'stroke-width': 1 }, grid);
+      sv('text', { x: M.l - 8, y: yy + 3.5, 'text-anchor': 'end', class: 'ax' }, grid).textContent = nf0.format(v);
+    }
+    // hover / selection background
+    const hoverBg = sv('rect', { x: 0, y: M.t, width: band, height: ph, fill: 'var(--hover)', opacity: 0 }, svg);
+    if (drillQ !== null && drillQ < qs.length) {
+      sv('rect', { x: M.l + band * drillQ, y: M.t, width: band, height: ph, fill: 'var(--sel)' }, svg);
+    }
+    // baseline
+    sv('line', { x1: M.l, x2: M.l + pw, y1: M.t + ph + .5, y2: M.t + ph + .5, stroke: 'var(--rule-strong)', 'stroke-width': 1 }, svg);
+
+    // x labels: quarter + year groups
+    const xg = sv('g', {}, svg);
+    for (const q of qs) {
+      if (narrow && band < 18 && q.q !== 1 && q.q !== 3) continue;
+      sv('text', { x: cx(q.k), y: M.t + ph + 15, 'text-anchor': 'middle', class: 'ax' }, xg).textContent = 'Q' + q.q;
+    }
+    for (const yr of YEARS) {
+      const ks = qs.filter(q => q.y === yr).map(q => q.k);
+      const x0 = M.l + band * ks[0], x1 = M.l + band * (ks[ks.length - 1] + 1);
+      sv('text', { x: (x0 + x1) / 2, y: M.t + ph + 34, 'text-anchor': 'middle', class: 'ax yr' }, xg).textContent = String(yr);
+      if (ks[0] > 0) sv('line', { x1: Math.round(x0) + .5, x2: Math.round(x0) + .5, y1: M.t + ph, y2: M.t + ph + 38, stroke: 'var(--rule-strong)', 'stroke-width': 1 }, xg);
+    }
+
+    // bars
+    const bars = sv('g', {}, svg);
+    for (const q of qs) {
+      if (q.acv <= 0) continue;
+      const yy = y(q.acv), hh = M.t + ph - yy;
+      sv('path', {
+        d: barPath(cx(q.k) - bw / 2, yy, bw, Math.max(hh, 1), 4),
+        fill: 'var(--s-bar)',
+        opacity: drillQ !== null && drillQ !== q.k ? .45 : 1
+      }, bars);
+    }
+
+    // cumulative line
+    if (!empty) {
+      const pts = qs.map(q => `${cx(q.k).toFixed(1)},${y(q.cum).toFixed(1)}`).join(' ');
+      sv('polyline', { points: pts, fill: 'none', stroke: 'var(--s-line)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+      const last = qs[qs.length - 1];
+      const ex = cx(last.k), ey = y(last.cum);
+      sv('circle', { cx: ex, cy: ey, r: 4, fill: 'var(--s-line)', stroke: 'var(--surface)', 'stroke-width': 2 }, svg);
+      const ly = ey - 12 < M.t + 2 ? ey + 20 : ey - 12;
+      sv('text', { x: ex + 4, y: ly, 'text-anchor': 'end', class: 'endlbl' }, svg).textContent = `${fmtM(last.cum)} MSEK`;
+    } else {
+      sv('text', { x: M.l + pw / 2, y: M.t + ph / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = 'Inga avtal matchar filtret';
+    }
+
+    // hover dot
+    const hoverDot = sv('circle', { r: 4.5, fill: 'var(--s-line)', stroke: 'var(--surface)', 'stroke-width': 2, opacity: 0 }, svg);
+
+    // hit targets: full-height band per quarter
+    const hits = sv('g', {}, svg);
+    for (const q of qs) {
+      const r = sv('rect', {
+        x: M.l + band * q.k, y: M.t, width: band, height: ph + M.b - 6, fill: 'transparent', class: 'hit',
+        tabindex: 0, role: 'button',
+        'aria-label': `${q.label}: ${nf0.format(q.n)} avtal, ${fmtM(q.acv)} MSEK löper ut, ackumulerat ${fmtM(q.cum)} MSEK`,
+        'aria-pressed': String(drillQ === q.k)
+      }, hits);
+      const show = () => {
+        hoverBg.setAttribute('x', M.l + band * q.k); hoverBg.setAttribute('opacity', drillQ === q.k ? 0 : 1);
+        if (!empty) { hoverDot.setAttribute('cx', cx(q.k)); hoverDot.setAttribute('cy', y(q.cum)); hoverDot.setAttribute('opacity', 1); }
+        showTip(q, cx(q.k), Math.min(y(q.acv), y(q.cum)), W);
+      };
+      const hide = () => { hoverBg.setAttribute('opacity', 0); hoverDot.setAttribute('opacity', 0); tip.hidden = true; };
+      r.addEventListener('pointerenter', show);
+      r.addEventListener('pointerleave', hide);
+      r.addEventListener('focus', show);
+      r.addEventListener('blur', hide);
+      r.addEventListener('click', () => toggleDrill(q.k));
+      r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDrill(q.k); } });
+    }
+  }
+
+  function showTip(q, x, yTop, W) {
+    tip.textContent = '';
+    tip.appendChild(h('div', 't', q.label));
+    const row = (keyCls, val, lbl) => {
+      const r = h('div', 'r'); const k = h('i', keyCls);
+      if (keyCls === 'key-n') k.textContent = '#';
+      r.append(k, h('b', null, val), h('em', null, lbl)); tip.appendChild(r);
+    };
+    row('key-bar', `${fmtM(q.acv)} MSEK`, 'löper ut');
+    row('key-line', `${fmtM(q.cum)} MSEK`, 'ackumulerat');
+    row('key-n', nf0.format(q.n), 'avtal');
+    tip.appendChild(h('div', 'act', drillQ === q.k ? 'Klicka för att visa alla kvartal' : 'Klicka för att visa i listan'));
+    tip.hidden = false;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = x + 14; if (left + tw > W) left = x - 14 - tw; if (left < 0) left = Math.max(0, Math.min(W - tw, x - tw / 2));
+    let topPx = Math.max(0, yTop - th / 2);
+    tip.style.left = left + 'px'; tip.style.top = topPx + 'px';
+  }
+
+  if ('ResizeObserver' in window) {
+    let raf = 0;
+    new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => lastQs && drawChart(lastQs)); }).observe(chartEl);
+  } else {
+    window.addEventListener('resize', () => lastQs && drawChart(lastQs));
+  }
+
+  /* ---------- Procurement list ---------- */
+  const COLS = [
+    { k: 'org', l: 'Organisation', cls: 'org' },
+    { k: 'typ', l: 'Typ', cls: 'nw' },
+    { k: 'lan', l: 'Län' },
+    { k: 'grupp', l: 'Grupp' },
+    { k: 'kund', l: 'Kundstatus', cls: 'kund' },
+    { k: 'acv', l: 'ACV', num: true, firstDir: -1 },
+    { k: 'date', l: 'Avtalsutgång', cls: 'date' },
+    { k: 'prio', l: 'Prioritet (Influensarbete)', order: PRIOS },
+    { k: 'ansv', l: 'Ansvarig' },
+    { k: 'fas', l: 'Fas', order: PHASES, cls: 'nw' },
+    { k: 'komm', l: 'Kommentar', cls: 'komm', nosort: true },
+    { k: 'deadline', l: 'Deadline (upphandling)', cls: 'date', optional: true }
+  ];
+  const SORT_NAMES = { org: 'organisation', typ: 'typ', lan: 'län', grupp: 'grupp', kund: 'kundstatus', acv: 'ACV', date: 'avtalsutgång', prio: 'prioritet', ansv: 'ansvarig', fas: 'fas', deadline: 'deadline' };
+
+  function cmp(col, a, b) {
+    const va = a[col.k], vb = b[col.k];
+    const ea = va === null || va === '', eb = vb === null || vb === '';
+    if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1; // blanks last in both directions
+    let c;
+    if (col.num) c = va - vb;
+    else if (col.order) c = rankIn(col.order, va) - rankIn(col.order, vb) || coll.compare(va, vb);
+    else c = coll.compare(va, vb);
+    return c * sort.dir;
+  }
+
+  function renderList(sel) {
+    const showDeadline = ROWS.some(r => r.deadline);
+    const cols = COLS.filter(c => !c.optional || showDeadline);
+    let rows = drillQ !== null ? sel.filter(r => qIndex(r.date) === drillQ) : sel.slice();
+    const sc = cols.find(c => c.k === sort.k) || cols[6];
+    rows.sort((a, b) => cmp(sc, a, b) || (sc.k !== 'date' ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) || a.i - b.i);
+
+    // heading
+    const dirTxt = sort.k === 'date' && sort.dir === 1 ? '' : (sort.dir === 1 ? ', stigande' : ', fallande');
+    $('l-title').textContent = `Upphandlingar i urvalet (${rows.length} st) – sorterade på ${SORT_NAMES[sc.k]}${dirTxt}`;
+    $('drill').hidden = drillQ === null;
+    if (drillQ !== null) $('drill-lbl').textContent = QUARTERS[drillQ].label;
+
+    // header
+    const hr = $('lt-head'); hr.textContent = '';
+    for (const c of cols) {
+      const th = h('th'); th.scope = 'col';
+      if (c.num) th.className = 'num';
+      if (c.nosort) { th.appendChild(h('button', null, c.l)).disabled = true; th.firstChild.style.cursor = 'default'; }
+      else {
+        const b = h('button'); b.type = 'button';
+        const active = sort.k === c.k;
+        if (active) th.setAttribute('aria-sort', sort.dir === 1 ? 'ascending' : 'descending');
+        b.append(c.l, h('span', 'arr', active ? (sort.dir === 1 ? '▲' : '▼') : '↕'));
+        b.addEventListener('click', () => {
+          if (sort.k === c.k) sort.dir = -sort.dir; else sort = { k: c.k, dir: c.firstDir || 1 };
+          renderList(lastSel);
+        });
+        th.appendChild(b);
+      }
+      hr.appendChild(th);
+    }
+
+    // body
+    const tb = $('lt').tBodies[0]; tb.textContent = '';
+    if (!rows.length) {
+      const tr = h('tr', 'emptyrow'); const td = h('td', null, 'Inga upphandlingar matchar filtret'); td.colSpan = cols.length;
+      tr.appendChild(td); tb.appendChild(tr);
+    }
+    const frag = document.createDocumentFragment();
+    for (const r of rows) {
+      const tr = h('tr');
+      for (const c of cols) {
+        const v = r[c.k];
+        const td = h('td', c.cls || null);
+        if (c.num) { td.classList.add('num'); td.textContent = v === null ? '–' : fmtKr(v); }
+        else if (c.k === 'prio' && v) { td.appendChild(h('span', 'pchip ' + (PRIO_CLASS[v] || ''), v)); }
+        else if (c.k === 'fas' && v) {
+          const wrap = h('span', 'fas'); const idx = PHASES.indexOf(v);
+          if (idx >= 0 && idx < PHASES.length - 1) {
+            const st = h('span', 'steps'); st.setAttribute('aria-hidden', 'true'); st.title = `Steg ${idx + 1} av ${PHASES.length - 1}`;
+            for (let s = 0; s < PHASES.length - 1; s++) st.appendChild(h('i', s <= idx ? 'on' : null));
+            wrap.appendChild(st);
+          }
+          wrap.appendChild(document.createTextNode(v));
+          td.appendChild(wrap);
+        }
+        else if (!v) { td.textContent = ''; }
+        else td.textContent = v;
+        tr.appendChild(td);
+      }
+      frag.appendChild(tr);
+    }
+    tb.appendChild(frag);
+
+    // footer
+    const tf = $('lt').tFoot; tf.textContent = '';
+    if (rows.length) {
+      const tr = h('tr');
+      cols.forEach(c => {
+        const td = h('td', c.num ? 'num' : null);
+        if (c.k === 'org') td.textContent = `Summa (${rows.length} st)`;
+        if (c.num) td.textContent = fmtKr(rows.reduce((s, r) => s + r.acv, 0));
+        tr.appendChild(td);
+      });
+      tf.appendChild(tr);
+    }
+  }
+
+  /* ---------- Update loop ---------- */
+  let lastSel = [];
+  function update(drillOnly) {
+    const sel = ROWS.filter(r => matches(r));
+    lastSel = sel;
+    const qs = QUARTERS.map(q => Object.assign({}, q, { n: 0, acv: 0, cum: 0 }));
+    for (const r of sel) { const k = qIndex(r.date); if (k >= 0 && k < NQ) { qs[k].n++; qs[k].acv += r.acv; } }
+    let c = 0; for (const q of qs) { c += q.acv; q.cum = c; }
+    const total = sel.reduce((s, r) => s + r.acv, 0);
+
+    if (!drillOnly) { syncControls(sel); renderKpis(sel, total); save(); }
+    renderQuarterTable(qs, total, sel.length);
+    drawChart(qs);
+    renderList(sel);
+  }
+
+  update();
+})();
+</script>
+</body>
+</html>
